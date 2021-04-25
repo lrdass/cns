@@ -1,0 +1,21 @@
+{
+  "name": "cg-scratch",
+  "version": "1.0.0",
+  "description": "raytracer and that kinda of thing",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "live-server .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "cg"
+  ],
+  "author": "Lucas Suppes",
+  "license": "MIT",
+  "dependencies": {
+    "eslint": "^7.25.0"
+  },
+  "devDependencies": {
+    "live-server": "^1.2.1"
+  }
+}
