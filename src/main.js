@@ -1,13 +1,19 @@
-import { Teste } from "./test.js";
+import { Teste } from "./canvas.js";
 
 const canvas = document.getElementById("canvas");
 const context = canvas.getContext("2d");
 
-const canvasBuffer = context.getImageData(0, 0, canvas.width, canvas.height);
+const width = canvas.width;
+const height = canvas.height;
 
-console.log(Teste);
-const putPixel = (x, y, r, g, b, a) => {
-  const index = (x + y * canvas.width) * 4;
+const canvasBuffer = context.getImageData(0, 0, width, height);
+
+const blit = () => {
+  context.putImageData(canvasBuffer, 0, 0);
+};
+
+const canvasPixel = (x, y, r, g, b, a) => {
+  const index = (x + y * width) * 4;
 
   canvasBuffer.data[index + 0] = r;
   canvasBuffer.data[index + 1] = g;
@@ -15,15 +21,15 @@ const putPixel = (x, y, r, g, b, a) => {
   canvasBuffer.data[index + 3] = a;
 };
 
-const blit = () => {
-  context.putImageData(canvasBuffer, 0, 0);
+const putPixel = (x, y, color) => {
+  let canvasX = width / 2 + x;
+  let canvasY = height / 2 - y;
+
+  canvasPixel(canvasX, canvasY, color.r, color.g, color.b, color.a);
 };
 
-putPixel(1, 1, 255, 0, 0, 255);
-putPixel(1, 2, 255, 0, 0, 255);
-putPixel(1, 3, 255, 0, 0, 255);
-putPixel(1, 4, 255, 0, 0, 255);
-putPixel(1, 5, 0, 255, 0, 255);
-putPixel(1, 6, 0, 255, 0, 255);
+for (let i = 0.0; i < 100; i++) {
+  putPixel(i, i, { r: 0, g: 0, b: 0, a: 255 });
+}
 
 blit();
