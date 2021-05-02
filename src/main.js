@@ -1,4 +1,4 @@
-import { Teste } from "./canvas.js";
+import { Vector3f } from "./vector.js";
 
 const canvas = document.getElementById("canvas");
 const context = canvas.getContext("2d");
@@ -26,6 +26,10 @@ const putPixel = (x, y, color) => {
   let canvasY = height / 2 - y;
 
   canvasPixel(canvasX, canvasY, color.r, color.g, color.b, color.a);
+};
+
+const Camera = {
+  pos: { x: 0, y: 0, z: 0 },
 };
 
 for (let i = 0.0; i < 100; i++) {
