@@ -14,8 +14,7 @@ const blit = () => {
 
 const canvasPixel = (x, y, r, g, b, a) => {
   const index = (x + y * width) * 4;
-
-  canvasBuffer.data[index + 0] = r;
+  canvasBuffr.data[index + 0] = r;
   canvasBuffer.data[index + 1] = g;
   canvasBuffer.data[index + 2] = b;
   canvasBuffer.data[index + 3] = a;
@@ -28,12 +27,24 @@ const putPixel = (x, y, color) => {
   canvasPixel(canvasX, canvasY, color.r, color.g, color.b, color.a);
 };
 
-const Camera = {
-  pos: { x: 0, y: 0, z: 0 },
+const mapScreenToWorldPlane = (x, y) => {
+  return { x, y };
 };
 
-for (let i = 0.0; i < 100; i++) {
-  putPixel(i, i, { r: 0, g: 0, b: 0, a: 255 });
+const rayCastSphere = (direction, world) => {
+  return {};
+};
+
+for (let x = -width / 2; x < width / 2; x++) {
+  for (let y = -height / 2; y < height / 2; y++) {
+    let { xWorld, yWorld } = mapScreenToWorldPlane(x, y);
+    const direction = new Vector3f(xWorld, yWorld, 1);
+
+    const hit = rayCastSphere(direction, world);
+    if (hit) {
+      putPixel(x, y, hit.color);
+    }
+  }
 }
 
 blit();
