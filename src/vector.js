@@ -1,20 +1,26 @@
 export class Vector3f {
   constructor(x, y, z) {
-    return { x, y, z };
+    this.x = x;
+    this.y = y;
+    this.z = z;
   }
 
-  add = (vector) => {
-    return {
-      x: this.x + vector.x,
-      y: this.y + vector.y,
-      z: this.z + vector.z,
-    };
-  };
-  sub = (vector) => {
-    return {
-      x: this.x - vector.x,
-      y: this.y - vector.y,
-      z: this.z - vector.z,
-    };
-  };
+  dot(vector) {
+    return this.x * vector.x + this.y * vector.y + this.z * vector.z;
+  }
+
+  add(vector) {
+    return new Vector3f(
+      this.x + vector.x,
+      this.y + vector.y,
+      this.z + vector.z
+    );
+  }
+  sub(vector) {
+    return new Vector3f(
+      this.x - vector.x,
+      this.y - vector.y,
+      this.z - vector.z
+    );
+  }
 }
