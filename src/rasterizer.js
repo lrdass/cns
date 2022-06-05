@@ -138,6 +138,7 @@ const fillTriangle = (p0, p1, p2, color) => {
     xRight = xCoordinatesForP0P2;
   }
 
+
   for (let y = p0.y; y < p2.y; y++) {
     let currentIndex = y - p0.y;
     drawLine({ x: xLeft[currentIndex], y }, { x: xRight[currentIndex], y }, color);
