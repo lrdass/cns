@@ -13,7 +13,7 @@
   "author": "Lucas Suppes",
   "license": "MIT",
   "dependencies": {
-    "eslint": "^8.3.0"
+    "eslint": "^8.17.0"
   },
   "devDependencies": {
     "live-server": "^1.2.1"
