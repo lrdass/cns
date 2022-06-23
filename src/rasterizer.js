@@ -63,7 +63,8 @@ const drawLine = (p0, p1, color) => {
 };
 
 const RED = { r: 255, g: 0, b: 0, a: 255 };
-//const BLUE = { r: 0, g: 0, b: 255, a: 255 };
+const BLUE = { r: 0, g: 0, b: 255, a: 255 };
+const GREEN = { r: 0, g: 255, b: 0, a: 255 };
 
 const interpolate = (i0, i1, d0, d1) => {
   if (i0 === i1) {
@@ -146,6 +147,42 @@ const fillTriangle = (p0, p1, p2, color) => {
   }
 };
 
-fillTriangle(triangle[0], triangle[1], triangle[2], RED);
+// fillTriangle(triangle[0], triangle[1], triangle[2], RED);
+let vP1 = { x: -1, y: 1, z: 3 }
+let vP2 = { x: 1, y: 1, z: 3 }
+let vP3 = { x: -1, y: -1, z: 3 }
+let vP4 = { x: 1, y: -1, z: 3 }
+
+let vP5 = { x: -1, y: 1, z: 4 }
+let vP6 = { x: 1, y: 1, z: 4 }
+let vP7 = { x: -1, y: -1, z: 4 }
+let vP8 = { x: 1, y: -1, z: 4 }
+
+
+const PLANE_DISTANCE = 1;
+let projectVertex = (vertex) => {
+  return { x: (vertex.x * PLANE_DISTANCE) / vertex.z, y: (vertex.y * PLANE_DISTANCE) / vertex.z, z: vertex.z }
+}
+
+const PLANE_WIDTH = 1;
+const PLANE_HEIGHT = 1;
+const viewPortToCanvas = ({ x, y, z }) => {
+  return { x: x * (width / PLANE_WIDTH), y: y * (height / PLANE_HEIGHT) }
+}
+
+drawLine(viewPortToCanvas(projectVertex(vP1)), viewPortToCanvas(projectVertex(vP2)), RED)
+drawLine(viewPortToCanvas(projectVertex(vP1)), viewPortToCanvas(projectVertex(vP3)), RED)
+drawLine(viewPortToCanvas(projectVertex(vP3)), viewPortToCanvas(projectVertex(vP4)), RED)
+drawLine(viewPortToCanvas(projectVertex(vP2)), viewPortToCanvas(projectVertex(vP4)), RED)
+
+drawLine(viewPortToCanvas(projectVertex(vP5)), viewPortToCanvas(projectVertex(vP6)), GREEN)
+drawLine(viewPortToCanvas(projectVertex(vP5)), viewPortToCanvas(projectVertex(vP7)), GREEN)
+drawLine(viewPortToCanvas(projectVertex(vP7)), viewPortToCanvas(projectVertex(vP8)), GREEN)
+drawLine(viewPortToCanvas(projectVertex(vP6)), viewPortToCanvas(projectVertex(vP8)), GREEN)
+
+drawLine(viewPortToCanvas(projectVertex(vP1)), viewPortToCanvas(projectVertex(vP5)), BLUE)
+drawLine(viewPortToCanvas(projectVertex(vP2)), viewPortToCanvas(projectVertex(vP6)), BLUE)
+drawLine(viewPortToCanvas(projectVertex(vP3)), viewPortToCanvas(projectVertex(vP7)), BLUE)
+drawLine(viewPortToCanvas(projectVertex(vP4)), viewPortToCanvas(projectVertex(vP8)), BLUE)
 
 blit();
