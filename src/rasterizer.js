@@ -1,3 +1,5 @@
+import { Matrix4, Vector3f, } from './math'
+
 const canvas = document.getElementById("canvas");
 const context = canvas.getContext("2d");
 
@@ -65,6 +67,9 @@ const drawLine = (p0, p1, color) => {
 const RED = { r: 255, g: 0, b: 0, a: 255 };
 const BLUE = { r: 0, g: 0, b: 255, a: 255 };
 const GREEN = { r: 0, g: 255, b: 0, a: 255 };
+const YELLOW = { r: 225, g: 225, b: 0, a: 255 };
+const CYAN = { r: 255, g: 0, b: 255, a: 255 };
+const PURPLE = { r: 0, g: 255, b: 255, a: 255 };
 
 const interpolate = (i0, i1, d0, d1) => {
   if (i0 === i1) {
@@ -81,11 +86,11 @@ const interpolate = (i0, i1, d0, d1) => {
   return values;
 };
 
-const triangle = [
-  { x: 0, y: 0 },
-  { x: 50, y: 50 },
-  { x: 100, y: -65 },
-];
+// const triangle = [
+//   { x: 0, y: 0 },
+//   { x: 50, y: 50 },
+//   { x: 100, y: -65 },
+// ];
 
 // const fillTriangle0 = (p0, p1, p2, color) => {
 //   [p0, p1, p2] = [p0, p1, p2].sort((point1, point2) => point1.y > point2.y);
@@ -128,61 +133,119 @@ const fillTriangle = (p0, p1, p2, color) => {
 
   xCoordinatesForP0P1.pop();
   const xCoordinatesForSmallerSide = [...xCoordinatesForP0P1, ...xCoordinatesForP1P2];
+
+
   const midIndex = Math.floor(xCoordinatesForP0P2.length / 2);
 
   let xLeft, xRight;
   if (xCoordinatesForP0P2[midIndex] < xCoordinatesForSmallerSide[midIndex]) {
-    xLeft = xCoordinatesForP0P2;
-    xRight = xCoordinatesForSmallerSide;
+    [xLeft, xRight] = [xCoordinatesForP0P2, xCoordinatesForSmallerSide];
   } else {
-    xLeft = xCoordinatesForSmallerSide;
-    xRight = xCoordinatesForP0P2;
+    [xLeft, xRight] = [xCoordinatesForSmallerSide, xCoordinatesForP0P2];
   }
 
 
   for (let y = p0.y; y < p2.y; y++) {
     let currentIndex = y - p0.y;
-    drawLine({ x: xLeft[currentIndex], y }, { x: xRight[currentIndex], y }, color);
-    blit();
+    let [xFloor, xCeiling] = [xLeft[currentIndex], xRight[currentIndex]]
+    for (let i = xFloor; i < xCeiling; i++) {
+      putPixel(i, y, color)
+    }
   }
 };
 
 // fillTriangle(triangle[0], triangle[1], triangle[2], RED);
-let vP1 = { x: -1, y: 1, z: 3 }
-let vP2 = { x: 1, y: 1, z: 3 }
-let vP3 = { x: -1, y: -1, z: 3 }
-let vP4 = { x: 1, y: -1, z: 3 }
 
-let vP5 = { x: -1, y: 1, z: 4 }
-let vP6 = { x: 1, y: 1, z: 4 }
-let vP7 = { x: -1, y: -1, z: 4 }
-let vP8 = { x: 1, y: -1, z: 4 }
-
+const drawTriangle = (p1, p2, p3, color) => {
+  drawLine(p1, p2, color)
+  drawLine(p2, p3, color)
+  drawLine(p3, p1, color)
+}
 
 const PLANE_DISTANCE = 1;
-let projectVertex = (vertex) => {
-  return { x: (vertex.x * PLANE_DISTANCE) / vertex.z, y: (vertex.y * PLANE_DISTANCE) / vertex.z, z: vertex.z }
-}
+// let projectVertex = (vertex) => {
+//   return { x: (vertex.x * PLANE_DISTANCE) / vertex.z, y: (vertex.y * PLANE_DISTANCE) / vertex.z, z: vertex.z }
+// }
 
 const PLANE_WIDTH = 1;
 const PLANE_HEIGHT = 1;
 const viewPortToCanvas = ({ x, y, z }) => {
-  return { x: x * (width / PLANE_WIDTH), y: y * (height / PLANE_HEIGHT) }
+  return { x: x * (width / PLANE_WIDTH), y: y * (height / PLANE_HEIGHT), z: z }
 }
 
-drawLine(viewPortToCanvas(projectVertex(vP1)), viewPortToCanvas(projectVertex(vP2)), RED)
-drawLine(viewPortToCanvas(projectVertex(vP1)), viewPortToCanvas(projectVertex(vP3)), RED)
-drawLine(viewPortToCanvas(projectVertex(vP3)), viewPortToCanvas(projectVertex(vP4)), RED)
-drawLine(viewPortToCanvas(projectVertex(vP2)), viewPortToCanvas(projectVertex(vP4)), RED)
+const cube = {
+  vertices: [
+    { x: -1, y: 1, z: -1 }, // a  0
+    { x: 1, y: 1, z: -1 },  // b  1
+    { x: 1, y: -1, z: -1 }, // c  2
+    { x: -1, y: -1, z: -1 }, // d 3
+    { x: -1, y: 1, z: 1 },   // e 4
+    { x: 1, y: 1, z: 1 },  // f   5
+    { x: 1, y: -1, z: 1 }, // g   6
+    { x: -1, y: -1, z: 1 }, //h   7
+  ],
+  meshes: [
+    [0, 1, 3, RED], //abd
+    [1, 2, 3, RED], // bcd [1, 2, 5], // bfc
+    [1, 6, 2, BLUE], // bgc
+    [1, 5, 6, BLUE], // bfg
+    [0, 7, 3, GREEN], // ahd
+    [0, 4, 7, GREEN], //  aeh
+    [2, 7, 6, YELLOW],//chg
+    [2, 3, 7, YELLOW],// cdh
+    [4, 1, 5, PURPLE], //ebf
+    [4, 1, 0, PURPLE], //eba
+    [4, 7, 6, CYAN], // ehg
+    [4, 6, 5, CYAN],// egf
+  ]
+}
 
-drawLine(viewPortToCanvas(projectVertex(vP5)), viewPortToCanvas(projectVertex(vP6)), GREEN)
-drawLine(viewPortToCanvas(projectVertex(vP5)), viewPortToCanvas(projectVertex(vP7)), GREEN)
-drawLine(viewPortToCanvas(projectVertex(vP7)), viewPortToCanvas(projectVertex(vP8)), GREEN)
-drawLine(viewPortToCanvas(projectVertex(vP6)), viewPortToCanvas(projectVertex(vP8)), GREEN)
+const instance = {
+  model: cube,
+  transform: {
+    position: new Vector3f(0, 0, 4),
+    scale: new Vector3f(0.5, 0.5, 0.5),
+    rotation: new Vector3f(0, -Math.PI / 6, 0)
+  }
+}
 
-drawLine(viewPortToCanvas(projectVertex(vP1)), viewPortToCanvas(projectVertex(vP5)), BLUE)
-drawLine(viewPortToCanvas(projectVertex(vP2)), viewPortToCanvas(projectVertex(vP6)), BLUE)
-drawLine(viewPortToCanvas(projectVertex(vP3)), viewPortToCanvas(projectVertex(vP7)), BLUE)
-drawLine(viewPortToCanvas(projectVertex(vP4)), viewPortToCanvas(projectVertex(vP8)), BLUE)
+let sceneInstances = [
+  instance
+]
+const render = () => {
+  sceneInstances.forEach(instance => {
+    const projectedVertices = []
+    instance.model.vertices.forEach(vertex => {
+      const { position, scale, rotation } = instance.transform
+      const scaling = new Matrix4().Scale(scale)
+      const rotating = new Matrix4().RotateY(rotation)
+      const translating = new Matrix4().Translate(position)
+      const projecting = new Matrix4().Projection(PLANE_DISTANCE)
 
+      const projectedVertex =
+        projecting.multM(translating.multM(rotating.multM(scaling))).multV(vertex)
+
+      projectedVertices.push(projectedVertex.toVector3f())
+    })
+
+    instance.model.meshes.forEach(mesh => {
+      drawTriangle(
+        viewPortToCanvas({ x: projectedVertices[mesh[0]].x, y: projectedVertices[mesh[0]].y, z: projectedVertices[mesh[0]].z }),
+        viewPortToCanvas({ x: projectedVertices[mesh[1]].x, y: projectedVertices[mesh[1]].y, z: projectedVertices[mesh[0]].z }),
+        viewPortToCanvas({ x: projectedVertices[mesh[2]].x, y: projectedVertices[mesh[2]].y, z: projectedVertices[mesh[0]].z }), mesh[3]
+      )
+    })
+  })
+}
+
+const clear = () => {
+  context.fillStyle = "white";
+  context.fillRect(0, 0, width, height);
+  blit();
+}
+
+clear();
+render();
 blit();
+
+
