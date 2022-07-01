@@ -124,8 +124,35 @@ const interpolate = (i0, i1, d0, d1) => {
 // };
 
 
+let zBuffer = Array(width * height).fill(Number.MAX_VALUE)
+const zBufferAccess = (x, y) => {
+	x = canvas.width/2 + (x | 0);
+  y = canvas.height/2 - (y | 0) - 1;
+
+  if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) {
+    return false;
+  }
+
+  let offset = x + canvas.width*y;
+  return zBuffer[offset]
+}
+const zBufferWrite = (x, y, value) => {
+	x = canvas.width/2 + (x | 0);
+  y = canvas.height/2 - (y | 0) - 1;
+
+  if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) {
+    return false;
+  }
+
+  let offset = x + canvas.width*y;
+
+  zBuffer[offset] = value
+}
+
 const fillTriangle = (p0, p1, p2, color) => {
   [p0, p1, p2] = [p0, p1, p2].sort((point1, point2) => point1.y > point2.y);
+
+  let [minZ, midZ, maxZ] = [p0, p1, p2].sort((point1, point2) => point1.z > point2.z).map(point => point.z)
 
   const xCoordinatesForP1P2 = interpolate(p1.y, p2.y, p1.x, p2.x);
   const xCoordinatesForP0P1 = interpolate(p0.y, p1.y, p0.x, p1.x);
@@ -133,7 +160,6 @@ const fillTriangle = (p0, p1, p2, color) => {
 
   xCoordinatesForP0P1.pop();
   const xCoordinatesForSmallerSide = [...xCoordinatesForP0P1, ...xCoordinatesForP1P2];
-
 
   const midIndex = Math.floor(xCoordinatesForP0P2.length / 2);
 
@@ -144,12 +170,19 @@ const fillTriangle = (p0, p1, p2, color) => {
     [xLeft, xRight] = [xCoordinatesForSmallerSide, xCoordinatesForP0P2];
   }
 
-
   for (let y = p0.y; y < p2.y; y++) {
     let currentIndex = y - p0.y;
+
     let [xFloor, xCeiling] = [xLeft[currentIndex], xRight[currentIndex]]
+
+    let zScan = interpolate(xFloor, xCeiling, minZ, maxZ)
+
     for (let i = xFloor; i < xCeiling; i++) {
-      putPixel(i, y, color)
+      let currentZ = zScan[i - xFloor]
+      if (currentZ < zBufferAccess(i, y)) {
+        putPixel(i, y, color)
+        zBufferWrite(i, y, currentZ)
+      }
     }
   }
 };
@@ -229,7 +262,7 @@ const render = () => {
     })
 
     instance.model.meshes.forEach(mesh => {
-      drawTriangle(
+      fillTriangle(
         viewPortToCanvas({ x: projectedVertices[mesh[0]].x, y: projectedVertices[mesh[0]].y, z: projectedVertices[mesh[0]].z }),
         viewPortToCanvas({ x: projectedVertices[mesh[1]].x, y: projectedVertices[mesh[1]].y, z: projectedVertices[mesh[0]].z }),
         viewPortToCanvas({ x: projectedVertices[mesh[2]].x, y: projectedVertices[mesh[2]].y, z: projectedVertices[mesh[0]].z }), mesh[3]

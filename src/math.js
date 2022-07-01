@@ -77,7 +77,7 @@ class Matrix4 {
     this.body = [
       [planeDistance, 0, 0, 0],
       [0, planeDistance, 0, 0],
-      [0, 0, planeDistance, 0],
+      [0, 0, 1, 0],
       [0, 0, 1, 0],
     ]
     return this
