@@ -1,4 +1,4 @@
-import { Matrix4, Vector3f, } from './math'
+import { Matrix4, Vector3f } from "./math";
 
 const canvas = document.getElementById("canvas");
 const context = canvas.getContext("2d");
@@ -10,6 +10,16 @@ const canvasBuffer = context.getImageData(0, 0, width, height);
 
 const blit = () => {
   context.putImageData(canvasBuffer, 0, 0);
+};
+
+const clear = () => {
+  for (let i = 0; i < width * height * 4; i++) {
+    canvasBuffer.data[i + 0] = 255;
+    canvasBuffer.data[i + 1] = 255;
+    canvasBuffer.data[i + 2] = 255;
+    canvasBuffer.data[i + 3] = 255;
+  }
+  blit();
 };
 
 const canvasPixel = (x, y, r, g, b, a) => {
@@ -68,8 +78,8 @@ const RED = { r: 255, g: 0, b: 0, a: 255 };
 const BLUE = { r: 0, g: 0, b: 255, a: 255 };
 const GREEN = { r: 0, g: 255, b: 0, a: 255 };
 const YELLOW = { r: 225, g: 225, b: 0, a: 255 };
-const CYAN = { r: 255, g: 0, b: 255, a: 255 };
-const PURPLE = { r: 0, g: 255, b: 255, a: 255 };
+const PINK = { r: 255, g: 0, b: 255, a: 255 };
+const CYAN = { r: 0, g: 255, b: 255, a: 255 };
 
 const interpolate = (i0, i1, d0, d1) => {
   if (i0 === i1) {
@@ -80,205 +90,227 @@ const interpolate = (i0, i1, d0, d1) => {
   let a = (d1 - d0) / (i1 - i0);
   let d = d0;
   for (let i = i0; i < i1; i++) {
-    values.push(Math.floor(d));
+    values.push(d);
     d += a;
   }
   return values;
 };
 
-// const triangle = [
-//   { x: 0, y: 0 },
-//   { x: 50, y: 50 },
-//   { x: 100, y: -65 },
-// ];
-
-// const fillTriangle0 = (p0, p1, p2, color) => {
-//   [p0, p1, p2] = [p0, p1, p2].sort((point1, point2) => point1.y > point2.y);
-
-//   // Compute X coordinates of the edges.
-//   var x01 = interpolate(p0.y, p1.y, p0.x, p1.x);
-//   var x12 = interpolate(p1.y, p2.y, p1.x, p2.x);
-//   var x02 = interpolate(p0.y, p2.y, p0.x, p2.x);
-
-//   // Merge the two short sides.
-//   x01.pop();
-//   var x012 = x01.concat(x12);
-
-//   // Determine which is left and which is right.
-//   var x_left, x_right;
-//   var m = (x02.length / 2) | 0;
-//   if (x02[m] < x012[m]) {
-//     x_left = x02;
-//     x_right = x012;
-//   } else {
-//     x_left = x012;
-//     x_right = x02;
-//   }
-
-//   // Draw horizontal segments.
-//   for (var y = p0.y; y <= p2.y; y++) {
-//     for (var x = x_left[y - p0.y]; x <= x_right[y - p0.y]; x++) {
-//       putPixel(x, y, color);
-//     }
-//   }
-// };
-
-
-let zBuffer = Array(width * height).fill(Number.MAX_VALUE)
+let zBuffer = Array(width * height).fill(0);
 const zBufferAccess = (x, y) => {
-	x = canvas.width/2 + (x | 0);
-  y = canvas.height/2 - (y | 0) - 1;
+  x = canvas.width / 2 + (x | 0);
+  y = canvas.height / 2 - (y | 0) - 1;
 
   if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) {
     return false;
   }
 
-  let offset = x + canvas.width*y;
-  return zBuffer[offset]
-}
+  let offset = x + canvas.width * y;
+  return zBuffer[offset];
+};
 const zBufferWrite = (x, y, value) => {
-	x = canvas.width/2 + (x | 0);
-  y = canvas.height/2 - (y | 0) - 1;
+  x = canvas.width / 2 + (x | 0);
+  y = canvas.height / 2 - (y | 0) - 1;
 
   if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) {
     return false;
   }
 
-  let offset = x + canvas.width*y;
+  let offset = x + canvas.width * y;
 
-  zBuffer[offset] = value
-}
+  zBuffer[offset] = value;
+};
 
 const fillTriangle = (p0, p1, p2, color) => {
   [p0, p1, p2] = [p0, p1, p2].sort((point1, point2) => point1.y > point2.y);
 
-  let [minZ, midZ, maxZ] = [p0, p1, p2].sort((point1, point2) => point1.z > point2.z).map(point => point.z)
 
   const xCoordinatesForP1P2 = interpolate(p1.y, p2.y, p1.x, p2.x);
   const xCoordinatesForP0P1 = interpolate(p0.y, p1.y, p0.x, p1.x);
   const xCoordinatesForP0P2 = interpolate(p0.y, p2.y, p0.x, p2.x);
 
+  const zCoordinatesForP1P2 = interpolate(p1.y, p2.y, 1.0 / p1.z, 1.0 / p2.z);
+  const zCoordinatesForP0P1 = interpolate(p0.y, p1.y, 1.0 / p0.z, 1.0 / p1.z);
+  const zCoordinatesForP0P2 = interpolate(p0.y, p2.y, 1.0 / p0.z, 1.0 / p2.z);
+
   xCoordinatesForP0P1.pop();
-  const xCoordinatesForSmallerSide = [...xCoordinatesForP0P1, ...xCoordinatesForP1P2];
+  const xCoordinatesForSmallerSide = [
+    ...xCoordinatesForP0P1,
+    ...xCoordinatesForP1P2,
+  ];
+
+  zCoordinatesForP0P1.pop();
+  const zCoordinatesForSmallerSide = [
+    ...zCoordinatesForP0P1,
+    ...zCoordinatesForP1P2,
+  ];
 
   const midIndex = Math.floor(xCoordinatesForP0P2.length / 2);
 
-  let xLeft, xRight;
+  let xLeft, xRight, zLeft, zRight;
   if (xCoordinatesForP0P2[midIndex] < xCoordinatesForSmallerSide[midIndex]) {
     [xLeft, xRight] = [xCoordinatesForP0P2, xCoordinatesForSmallerSide];
+    [zLeft, zRight] = [zCoordinatesForP0P2, zCoordinatesForSmallerSide];
   } else {
     [xLeft, xRight] = [xCoordinatesForSmallerSide, xCoordinatesForP0P2];
+    [zLeft, zRight] = [zCoordinatesForSmallerSide, zCoordinatesForP0P2];
   }
 
   for (let y = p0.y; y < p2.y; y++) {
     let currentIndex = y - p0.y;
 
-    let [xFloor, xCeiling] = [xLeft[currentIndex], xRight[currentIndex]]
+    let [xFloor, xCeiling] = [xLeft[currentIndex], xRight[currentIndex]];
 
-    let zScan = interpolate(xFloor, xCeiling, minZ, maxZ)
+    let [zl, zr] = [zLeft[currentIndex], zRight[currentIndex]]
+    let zScan = interpolate(xFloor, xCeiling, zl, zr);
 
     for (let i = xFloor; i < xCeiling; i++) {
-      let currentZ = zScan[i - xFloor]
-      if (currentZ < zBufferAccess(i, y)) {
-        putPixel(i, y, color)
-        zBufferWrite(i, y, currentZ)
+      let currentZ = zScan[i - xFloor];
+      if (zBufferAccess(i, y) <= currentZ) {
+        putPixel(i, y, color);
+        zBufferWrite(i, y, currentZ);
+        blit();
       }
     }
+    blit()
   }
 };
 
 // fillTriangle(triangle[0], triangle[1], triangle[2], RED);
+const cullTriangles = (meshes, worldVertices, camera) => {
+  return meshes.filter(mesh => {
+    let triangle = {
+      a: new Vector3f(worldVertices[mesh[0]].x, worldVertices[mesh[0]].y, worldVertices[mesh[0]].z),
+      b: new Vector3f(worldVertices[mesh[1]].x, worldVertices[mesh[1]].y, worldVertices[mesh[1]].z),
+      c: new Vector3f(worldVertices[mesh[2]].x, worldVertices[mesh[2]].y, worldVertices[mesh[2]].z)
+    }
+
+    let AB = triangle.b.sub(triangle.a)
+    let AC = triangle.c.sub(triangle.a)
+
+    let triangleNormal = AB.cross(AC)
+
+    let ABtoCamera = camera.sub(triangle.a)
+
+    let angleWithCamera = ABtoCamera.dot(triangleNormal)
+
+    if (angleWithCamera > 0) {
+      return mesh
+    }
+
+  })
+}
 
 const drawTriangle = (p1, p2, p3, color) => {
-  drawLine(p1, p2, color)
-  drawLine(p2, p3, color)
-  drawLine(p3, p1, color)
-}
+  drawLine(p1, p2, color);
+  drawLine(p2, p3, color);
+  drawLine(p3, p1, color);
+  blit()
+};
 
 const PLANE_DISTANCE = 1;
-// let projectVertex = (vertex) => {
-//   return { x: (vertex.x * PLANE_DISTANCE) / vertex.z, y: (vertex.y * PLANE_DISTANCE) / vertex.z, z: vertex.z }
-// }
-
 const PLANE_WIDTH = 1;
 const PLANE_HEIGHT = 1;
+
 const viewPortToCanvas = ({ x, y, z }) => {
-  return { x: x * (width / PLANE_WIDTH), y: y * (height / PLANE_HEIGHT), z: z }
-}
+  return { x: x * (width / PLANE_WIDTH), y: y * (height / PLANE_HEIGHT), z: z };
+};
 
 const cube = {
   vertices: [
     { x: -1, y: 1, z: -1 }, // a  0
-    { x: 1, y: 1, z: -1 },  // b  1
+    { x: 1, y: 1, z: -1 }, // b  1
     { x: 1, y: -1, z: -1 }, // c  2
     { x: -1, y: -1, z: -1 }, // d 3
-    { x: -1, y: 1, z: 1 },   // e 4
-    { x: 1, y: 1, z: 1 },  // f   5
+    { x: -1, y: 1, z: 1 }, // e 4
+    { x: 1, y: 1, z: 1 }, // f   5
     { x: 1, y: -1, z: 1 }, // g   6
     { x: -1, y: -1, z: 1 }, //h   7
   ],
   meshes: [
-    [0, 1, 3, RED], //abd
-    [1, 2, 3, RED], // bcd [1, 2, 5], // bfc
-    [1, 6, 2, BLUE], // bgc
-    [1, 5, 6, BLUE], // bfg
-    [0, 7, 3, GREEN], // ahd
-    [0, 4, 7, GREEN], //  aeh
-    [2, 7, 6, YELLOW],//chg
-    [2, 3, 7, YELLOW],// cdh
-    [4, 1, 5, PURPLE], //ebf
-    [4, 1, 0, PURPLE], //eba
-    [4, 7, 6, CYAN], // ehg
-    [4, 6, 5, CYAN],// egf
-  ]
-}
+    [0, 1, 3, CYAN], //abd
+    [1, 2, 3, CYAN], // bcd
+    [1, 6, 2, PINK], // bgc
+    [1, 5, 6, PINK], // bfg
+    [4, 0, 7, GREEN], // eah
+    [0, 3, 7, GREEN], // adh
+    [3, 2, 7, YELLOW], // dch
+    [7, 2, 6, YELLOW], // hcg
+    [0, 4, 1, RED], //aeb
+    [4, 5, 1, RED], //efb
+    [5, 4, 7, BLUE], // feh
+    [5, 7, 6, BLUE], // fhg
+  ],
+};
 
 const instance = {
   model: cube,
   transform: {
     position: new Vector3f(0, 0, 4),
     scale: new Vector3f(0.5, 0.5, 0.5),
-    rotation: new Vector3f(0, -Math.PI / 6, 0)
-  }
-}
+    rotation: new Vector3f(0, 0.3, 0),
+  },
+};
 
-let sceneInstances = [
-  instance
-]
+const instance2 = {
+  model: cube,
+  transform: {
+    position: new Vector3f(-1, -2, 6),
+    scale: new Vector3f(0.5, 0.5, 0.5),
+    rotation: new Vector3f(0, 2.1, 0),
+  },
+};
+
+let sceneInstances = [instance];
+
 const render = () => {
-  sceneInstances.forEach(instance => {
-    const projectedVertices = []
-    instance.model.vertices.forEach(vertex => {
-      const { position, scale, rotation } = instance.transform
-      const scaling = new Matrix4().Scale(scale)
-      const rotating = new Matrix4().RotateY(rotation)
-      const translating = new Matrix4().Translate(position)
-      const projecting = new Matrix4().Projection(PLANE_DISTANCE)
+  sceneInstances.forEach((instance) => {
+    const projectedVertices = [];
+    const worldVertices = []
+    const { meshes } = instance.model
 
-      const projectedVertex =
-        projecting.multM(translating.multM(rotating.multM(scaling))).multV(vertex)
+    instance.model.vertices.forEach((vertex) => {
+      const { position, scale, rotation } = instance.transform;
+      const scaling = new Matrix4().Scale(scale);
+      const rotating = new Matrix4().RotateY(rotation);
+      const translating = new Matrix4().Translate(position);
+      const projecting = new Matrix4().Projection(PLANE_DISTANCE);
 
-      projectedVertices.push(projectedVertex.toVector3f())
-    })
+      // estou usando no culling os pontos ja projetados
+      // deveria usar os pontos tridimensionais e nao os
+      const worldCoordinates = translating.multM(rotating.multM(scaling))
+        .multV(vertex);
+      worldVertices.push(worldCoordinates)
 
-    instance.model.meshes.forEach(mesh => {
+      const projectedVertex = projecting.multV(worldCoordinates)
+
+      projectedVertices.push(projectedVertex.toVector3f());
+    });
+
+    const culledMesh = cullTriangles(meshes, worldVertices, new Vector3f(0, 0, 0))
+
+    culledMesh.forEach((mesh) => {
       fillTriangle(
-        viewPortToCanvas({ x: projectedVertices[mesh[0]].x, y: projectedVertices[mesh[0]].y, z: projectedVertices[mesh[0]].z }),
-        viewPortToCanvas({ x: projectedVertices[mesh[1]].x, y: projectedVertices[mesh[1]].y, z: projectedVertices[mesh[0]].z }),
-        viewPortToCanvas({ x: projectedVertices[mesh[2]].x, y: projectedVertices[mesh[2]].y, z: projectedVertices[mesh[0]].z }), mesh[3]
-      )
-    })
-  })
-}
+        viewPortToCanvas({
+          x: projectedVertices[mesh[0]].x,
+          y: projectedVertices[mesh[0]].y,
+          z: projectedVertices[mesh[0]].z,
+        }),
+        viewPortToCanvas({
+          x: projectedVertices[mesh[1]].x,
+          y: projectedVertices[mesh[1]].y,
+          z: projectedVertices[mesh[1]].z,
+        }),
+        viewPortToCanvas({
+          x: projectedVertices[mesh[2]].x,
+          y: projectedVertices[mesh[2]].y,
+          z: projectedVertices[mesh[2]].z,
+        }),
+        mesh[3]
+      );
+    });
+  });
+};
 
-const clear = () => {
-  context.fillStyle = "white";
-  context.fillRect(0, 0, width, height);
-  blit();
-}
-
-clear();
 render();
 blit();
-
-

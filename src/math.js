@@ -90,11 +90,55 @@ class Matrix4 {
 //
 
 class Vector {
+
   constructor(x, y, z, w) {
     this.x = x
     this.y = y
     this.z = z
     this.w = w
+  }
+
+
+  sub(vector) {
+    return new Vector3f(this.x - vector.x,
+      this.y - vector.y,
+      this.z - vector.z)
+  }
+
+  dot(vector) {
+    let a1 = this.x * vector.x
+    let a2 = this.y * vector.y
+    let a3 = this.z * vector.z
+    console.log(a1)
+    console.log(a2)
+    console.log(a3)
+    console.log('result : ', a1 + a2 + a3)
+    return this.x * vector.x +
+      this.y * vector.y +
+      this.z * vector.z
+  }
+
+  cross(vector) {
+    return new Vector3f(
+      this.y * vector.z - this.z * vector.y,
+      this.z * vector.x - this.x * vector.z,
+      this.x * vector.y - this.y * vector.x
+    )
+  }
+
+  div(scalar) {
+    return new Vector3f(this.x / scalar, this.y / scalar, this.z / scalar)
+  }
+
+  unit() {
+    return new Vector3f(0, 0, 0)
+  }
+
+  magnitude() {
+    return Math.sqrt(
+      this.x * this.x +
+      this.y * this.y +
+      this.z + this.z);
   }
 }
 
