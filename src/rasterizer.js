@@ -89,6 +89,9 @@ const interpolate = (i0, i1, d0, d1) => {
   let values = [];
   let a = (d1 - d0) / (i1 - i0);
   let d = d0;
+  // acho que existe um erro aqui ; esse for parece iterar sobre
+  // valores discretos
+  console.log(i0, i1)
   for (let i = i0; i < i1; i++) {
     values.push(d);
     d += a;
@@ -133,7 +136,6 @@ const fillTriangle = (p0, p1, p2, color) => {
   const zCoordinatesForP0P1 = interpolate(p0.y, p1.y, 1.0 / p0.z, 1.0 / p1.z);
   const zCoordinatesForP0P2 = interpolate(p0.y, p2.y, 1.0 / p0.z, 1.0 / p2.z);
 
-  xCoordinatesForP0P1.pop();
   const xCoordinatesForSmallerSide = [
     ...xCoordinatesForP0P1,
     ...xCoordinatesForP1P2,
@@ -169,7 +171,6 @@ const fillTriangle = (p0, p1, p2, color) => {
       if (zBufferAccess(i, y) <= currentZ) {
         putPixel(i, y, color);
         zBufferWrite(i, y, currentZ);
-        blit();
       }
     }
     blit()
@@ -248,7 +249,7 @@ const instance = {
   transform: {
     position: new Vector3f(0, 0, 4),
     scale: new Vector3f(0.5, 0.5, 0.5),
-    rotation: new Vector3f(0, 0.3, 0),
+    rotation: new Vector3f(0, 0.8, 0),
   },
 };
 

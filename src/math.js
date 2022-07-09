@@ -106,13 +106,6 @@ class Vector {
   }
 
   dot(vector) {
-    let a1 = this.x * vector.x
-    let a2 = this.y * vector.y
-    let a3 = this.z * vector.z
-    console.log(a1)
-    console.log(a2)
-    console.log(a3)
-    console.log('result : ', a1 + a2 + a3)
     return this.x * vector.x +
       this.y * vector.y +
       this.z * vector.z
