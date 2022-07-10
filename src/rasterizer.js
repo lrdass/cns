@@ -72,6 +72,7 @@ const drawLine = (p0, p1, color) => {
       // x = x + a;
     }
   }
+  blit()
 };
 
 const RED = { r: 255, g: 0, b: 0, a: 255 };
@@ -91,7 +92,6 @@ const interpolate = (i0, i1, d0, d1) => {
   let d = d0;
   // acho que existe um erro aqui ; esse for parece iterar sobre
   // valores discretos
-  console.log(i0, i1)
   for (let i = i0; i < i1; i++) {
     values.push(d);
     d += a;
@@ -101,19 +101,19 @@ const interpolate = (i0, i1, d0, d1) => {
 
 let zBuffer = Array(width * height).fill(0);
 const zBufferAccess = (x, y) => {
-  x = canvas.width / 2 + (x | 0);
-  y = canvas.height / 2 - (y | 0) - 1;
+  x = Math.floor((canvas.width / 2) + x);
+  y = Math.floor((canvas.height / 2) - y - 1);
 
   if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) {
     return false;
   }
 
   let offset = x + canvas.width * y;
-  return zBuffer[offset];
+  return zBuffer[Math.floor(offset)];
 };
 const zBufferWrite = (x, y, value) => {
-  x = canvas.width / 2 + (x | 0);
-  y = canvas.height / 2 - (y | 0) - 1;
+  x = Math.floor((canvas.width / 2) + x);
+  y = Math.floor((canvas.height / 2) - y - 1);
 
   if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) {
     return false;
@@ -136,6 +136,7 @@ const fillTriangle = (p0, p1, p2, color) => {
   const zCoordinatesForP0P1 = interpolate(p0.y, p1.y, 1.0 / p0.z, 1.0 / p1.z);
   const zCoordinatesForP0P2 = interpolate(p0.y, p2.y, 1.0 / p0.z, 1.0 / p2.z);
 
+  xCoordinatesForP0P1.pop();
   const xCoordinatesForSmallerSide = [
     ...xCoordinatesForP0P1,
     ...xCoordinatesForP1P2,
@@ -159,21 +160,22 @@ const fillTriangle = (p0, p1, p2, color) => {
   }
 
   for (let y = p0.y; y < p2.y; y++) {
-    let currentIndex = y - p0.y;
+    let currentIndex = Math.floor(y - p0.y);
 
     let [xFloor, xCeiling] = [xLeft[currentIndex], xRight[currentIndex]];
 
     let [zl, zr] = [zLeft[currentIndex], zRight[currentIndex]]
     let zScan = interpolate(xFloor, xCeiling, zl, zr);
 
-    for (let i = xFloor; i < xCeiling; i++) {
-      let currentZ = zScan[i - xFloor];
-      if (zBufferAccess(i, y) <= currentZ) {
-        putPixel(i, y, color);
-        zBufferWrite(i, y, currentZ);
+    // drawLine({ x: xFloor, y: y }, { x: xCeiling, y: y }, color)
+    for (let x = xFloor; x < xCeiling; x++) {
+      let currentZ = zScan[Math.floor(x - xFloor)];
+      putPixel(x, y, color);
+      if (zBufferAccess(x, y) <= currentZ) {
+        putPixel(x, y, color);
+        zBufferWrite(x, y, currentZ);
       }
     }
-    blit()
   }
 };
 
@@ -247,9 +249,9 @@ const cube = {
 const instance = {
   model: cube,
   transform: {
-    position: new Vector3f(0, 0, 4),
+    position: new Vector3f(0, 1, 4),
     scale: new Vector3f(0.5, 0.5, 0.5),
-    rotation: new Vector3f(0, 0.8, 0),
+    rotation: new Vector3f(0, 1.2, 0),
   },
 };
 
@@ -262,7 +264,7 @@ const instance2 = {
   },
 };
 
-let sceneInstances = [instance];
+let sceneInstances = [instance, instance2];
 
 const render = () => {
   sceneInstances.forEach((instance) => {
