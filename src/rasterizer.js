@@ -315,5 +315,35 @@ const render = () => {
   });
 };
 
-render();
-blit();
+let i = 0;
+let last = null
+let second = null
+let rendered = 0
+const draw = (now) => {
+  if (!last) {
+    last = now
+  }
+
+  if (now - second > 1000) {
+    console.log('frames per second: ', rendered)
+    rendered = 0
+    second = now
+  }
+
+  if (now - last > 30) {
+    clear()
+    render();
+    blit();
+
+    i += 0.01;
+    rendered += 1
+
+    instance.transform.rotation = new Vector3f(0, i, 0)
+    instance2.transform.rotation = new Vector3f(0, -1.3 * i, 0)
+    last = now
+  }
+
+  requestAnimationFrame(draw)
+}
+
+draw()
