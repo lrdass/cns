@@ -125,8 +125,7 @@ const zBufferWrite = (x, y, value) => {
 };
 
 const fillTriangle = (p0, p1, p2, color) => {
-  [p0, p1, p2] = [p0, p1, p2].sort((point1, point2) => point1.y > point2.y);
-
+  [p0, p1, p2] = [p0, p1, p2].sort((point1, point2) => point1.y - point2.y);
 
   const xCoordinatesForP1P2 = interpolate(p1.y, p2.y, p1.x, p2.x);
   const xCoordinatesForP0P1 = interpolate(p0.y, p1.y, p0.x, p1.x);
@@ -208,7 +207,6 @@ const drawTriangle = (p1, p2, p3, color) => {
   drawLine(p1, p2, color);
   drawLine(p2, p3, color);
   drawLine(p3, p1, color);
-  blit()
 };
 
 const PLANE_DISTANCE = 1;
