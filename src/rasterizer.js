@@ -1,5 +1,7 @@
 import { Matrix4, Vector3f } from "./math";
 
+let lightDistanceSlider = document.getElementById("light_position");
+
 const canvas = document.getElementById("canvas");
 const context = canvas.getContext("2d");
 
@@ -35,6 +37,7 @@ const canvasPixel = (x, y, r, g, b, a) => {
 const putPixel = (x, y, color) => {
   let canvasX = width / 2 + x;
   let canvasY = height / 2 - y;
+
 
   canvasPixel(canvasX, canvasY, color.r, color.g, color.b, color.a);
 };
@@ -178,6 +181,138 @@ const fillTriangle = (p0, p1, p2, color) => {
   }
 };
 
+const clamp = (value, min, max) => {
+  return Math.max(min, Math.min(max, value));
+}
+
+const multiplyColorScalar = (color, scalar) => {
+  return {
+    r: clamp(color.r * scalar, 0, 255),
+    g: clamp(color.g * scalar, 0, 255),
+    b: clamp(color.b * scalar, 0, 255),
+    a: color.a
+  }
+}
+
+let lights = [
+  {
+    type: 'POINT',
+    color: '#ffffff',
+    position: new Vector3f(0, 0, 0),
+    intensity: 6.0
+  },
+  {
+    type: 'AMBIENT',
+    intensity: 0.2
+  }
+]
+
+const calculateLightIntensity = (p0, p1, p2, lights) => {
+  // flatshading - calculando a normal do triangulo:
+
+  let v = p1.sub(p0);
+  let w = p2.sub(p0);
+
+  const normal = v.cross(w);
+
+  let lightIntensity = 0;
+
+
+  const baricenter = new Vector3f((p0.x + p1.x + p2.x) / 3, (p0.y + p1.y + p2.y) / 3, (p0.z + p1.z + p2.z) / 3);
+
+  lights.forEach(light => {
+    if (light.type === 'POINT') {
+      light.position = new Vector3f(0, 0, lightDistanceSlider.value)
+      let lightDirection = light.position.sub(baricenter);
+      let cameraDirection = new Vector3f(0, 0, 0).sub(p0);
+      // console.log('normal dot light', normal.dot(lightDirection));
+
+      const difuseIntensity = normal.dot(lightDirection) / (normal.magnitude() * lightDirection.magnitude());
+      // console.log('diffuse', difuseIntensity)
+      const reflectionVector = normal.prod(normal.dot(lightDirection)).prod(2).sub(lightDirection);
+      const reflectionIntensity = Math.pow(reflectionVector.dot(cameraDirection) / (reflectionVector.magnitude() * cameraDirection.magnitude()), 1.4);
+      // console.log('reflection', reflectionIntensity)
+      //
+
+      console.log('difuse', difuseIntensity)
+
+      if(difuseIntensity > 0 ){
+        lightIntensity += light.intensity * (difuseIntensity + reflectionIntensity);
+      }
+
+
+    }
+    if(light.type === 'AMBIENT') {
+      lightIntensity += light.intensity;
+    }
+  })
+  return lightIntensity;
+}
+
+const fillTriangleShaded = (p0, p1, p2, color, lights) => {
+
+  const lightIntensity = calculateLightIntensity(
+    new Vector3f(p0.x, p0.y, p0.z),
+    new Vector3f(p1.x, p1.y, p1.z),
+    new Vector3f(p2.x, p2.y, p1.z),
+    lights
+  );
+
+  [p0, p1, p2] = [p0, p1, p2].sort((point1, point2) => point1.y - point2.y);
+
+  console.log('light intensity', lightIntensity)
+
+  const xCoordinatesForP1P2 = interpolate(p1.y, p2.y, p1.x, p2.x);
+  const xCoordinatesForP0P1 = interpolate(p0.y, p1.y, p0.x, p1.x);
+  const xCoordinatesForP0P2 = interpolate(p0.y, p2.y, p0.x, p2.x);
+
+  const zCoordinatesForP1P2 = interpolate(p1.y, p2.y, 1.0 / p1.z, 1.0 / p2.z);
+  const zCoordinatesForP0P1 = interpolate(p0.y, p1.y, 1.0 / p0.z, 1.0 / p1.z);
+  const zCoordinatesForP0P2 = interpolate(p0.y, p2.y, 1.0 / p0.z, 1.0 / p2.z);
+
+  xCoordinatesForP0P1.pop();
+  const xCoordinatesForSmallerSide = [
+    ...xCoordinatesForP0P1,
+    ...xCoordinatesForP1P2,
+  ];
+
+  zCoordinatesForP0P1.pop();
+  const zCoordinatesForSmallerSide = [
+    ...zCoordinatesForP0P1,
+    ...zCoordinatesForP1P2,
+  ];
+
+  const midIndex = Math.floor(xCoordinatesForP0P2.length / 2);
+
+  let xLeft, xRight, zLeft, zRight;
+  if (xCoordinatesForP0P2[midIndex] < xCoordinatesForSmallerSide[midIndex]) {
+    [xLeft, xRight] = [xCoordinatesForP0P2, xCoordinatesForSmallerSide];
+    [zLeft, zRight] = [zCoordinatesForP0P2, zCoordinatesForSmallerSide];
+  } else {
+    [xLeft, xRight] = [xCoordinatesForSmallerSide, xCoordinatesForP0P2];
+    [zLeft, zRight] = [zCoordinatesForSmallerSide, zCoordinatesForP0P2];
+  }
+
+  for (let y = p0.y; y < p2.y; y++) {
+    let currentIndex = Math.floor(y - p0.y);
+
+    let [xFloor, xCeiling] = [xLeft[currentIndex], xRight[currentIndex]];
+
+    let [zl, zr] = [zLeft[currentIndex], zRight[currentIndex]]
+    let zScan = interpolate(xFloor, xCeiling, zl, zr);
+
+    // drawLine({ x: xFloor, y: y }, { x: xCeiling, y: y }, color)
+    for (let x = xFloor; x < xCeiling; x++) {
+      let currentZ = zScan[Math.floor(x - xFloor)];
+      putPixel(x, y, multiplyColorScalar(color, lightIntensity));
+      if (zBufferAccess(x, y) <= currentZ) {
+        putPixel(x, y, multiplyColorScalar(color, lightIntensity));
+        zBufferWrite(x, y, currentZ);
+      }
+    }
+  }
+};
+
 // fillTriangle(triangle[0], triangle[1], triangle[2], RED);
 const cullTriangles = (meshes, worldVertices, camera) => {
   return meshes.filter(mesh => {
@@ -214,7 +349,7 @@ const PLANE_WIDTH = 1;
 const PLANE_HEIGHT = 1;
 
 const viewPortToCanvas = ({ x, y, z }) => {
-  return { x: x * (width / PLANE_WIDTH), y: y * (height / PLANE_HEIGHT), z: z };
+  return { x: x * (width / PLANE_WIDTH), y: y * (height / PLANE_HEIGHT), z: z};
 };
 
 const cube = {
@@ -291,7 +426,7 @@ const render = () => {
     const culledMesh = cullTriangles(meshes, worldVertices, new Vector3f(0, 0, 0))
 
     culledMesh.forEach((mesh) => {
-      fillTriangle(
+      fillTriangleShaded(
         viewPortToCanvas({
           x: projectedVertices[mesh[0]].x,
           y: projectedVertices[mesh[0]].y,
@@ -307,9 +442,12 @@ const render = () => {
           y: projectedVertices[mesh[2]].y,
           z: projectedVertices[mesh[2]].z,
         }),
-        mesh[3]
+        mesh[3],
+        lights,
       );
     });
+
+
   });
 };
 
@@ -329,9 +467,9 @@ const draw = (now) => {
   }
 
   if (now - last > 30) {
-    clear()
-    render();
-    blit();
+clear()
+render();
+blit();
 
     i += 0.01;
     rendered += 1

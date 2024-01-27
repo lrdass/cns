@@ -1,3 +1,5 @@
+
+
 class Matrix4 {
   constructor() {
     this.body = [
@@ -105,6 +107,12 @@ class Vector {
       this.z - vector.z)
   }
 
+  add(vector){
+    return new Vector3f(this.x + vector.x,
+      this.y + vector.y,
+      this.z + vector.z)
+  }
+
   dot(vector) {
     return this.x * vector.x +
       this.y * vector.y +
@@ -119,6 +127,10 @@ class Vector {
     )
   }
 
+  prod(scalar){
+    return new Vector3f(this.x * scalar, this.y * scalar, this.z * scalar)
+  }
+
   div(scalar) {
     return new Vector3f(this.x / scalar, this.y / scalar, this.z / scalar)
   }
@@ -131,7 +143,11 @@ class Vector {
     return Math.sqrt(
       this.x * this.x +
       this.y * this.y +
-      this.z + this.z);
+      this.z * this.z);
+  }
+
+  normalize() {
+    return this.div(this.magnitude())
   }
 }
 
