@@ -85,6 +85,16 @@ class Matrix4 {
     return this
   }
 
+  Transpose(){
+    for(let i = 0; i < 4; i++){
+      for (let j = 0; j < 4; j++) {
+        this.body[i][j] = this.body[j][i]
+      }
+    }
+
+    return this
+  }
+
 
 
 }

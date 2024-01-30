@@ -197,9 +197,13 @@ const multiplyColorScalar = (color, scalar) => {
 let lights = [
   {
     type: 'POINT',
-    color: '#ffffff',
-    position: new Vector3f(0, 0, 0),
-    intensity: 6.0
+    position: new Vector3f(-3, 2, -10),
+    intensity: 0.9,
+  },
+  {
+    type: 'DIRECTIONAL',
+    intensity: 0.2,
+    direction: new Vector3f(0, 0, 1),
   },
   {
     type: 'AMBIENT',
@@ -217,50 +221,46 @@ const calculateLightIntensity = (p0, p1, p2, lights) => {
 
   let lightIntensity = 0;
 
-
-  const baricenter = new Vector3f((p0.x + p1.x + p2.x) / 3, (p0.y + p1.y + p2.y) / 3, (p0.z + p1.z + p2.z) / 3);
+  let vl;
 
   lights.forEach(light => {
     if (light.type === 'POINT') {
-      light.position = new Vector3f(0, 0, lightDistanceSlider.value)
-      let lightDirection = light.position.sub(baricenter);
-      let cameraDirection = new Vector3f(0, 0, 0).sub(p0);
-      // console.log('normal dot light', normal.dot(lightDirection));
+      const cameraOrientation = camera.orientation;
+      const cameraPosition = camera.position;
+      const cameraMatrix = cameraOrientation.Transpose().multM(new Matrix4().Translate(cameraPosition.prod(-1)));
+      const transformedLightPosition = cameraMatrix.multV(light.position);
+      vl = transformedLightPosition.sub(p0);
 
-      const difuseIntensity = normal.dot(lightDirection) / (normal.magnitude() * lightDirection.magnitude());
-      // console.log('diffuse', difuseIntensity)
-      const reflectionVector = normal.prod(normal.dot(lightDirection)).prod(2).sub(lightDirection);
-      const reflectionIntensity = Math.pow(reflectionVector.dot(cameraDirection) / (reflectionVector.magnitude() * cameraDirection.magnitude()), 1.4);
-      // console.log('reflection', reflectionIntensity)
-      //
-
-      console.log('difuse', difuseIntensity)
-
-      if(difuseIntensity > 0 ){
-        lightIntensity += light.intensity * (difuseIntensity + reflectionIntensity);
-      }
-
+    } else if(light.type === 'DIRECTIONAL') {
+      const cameraOrientation = camera.orientation;
+      const cameraMatrix = cameraOrientation.Transpose();
+      const transformedLightPosition = cameraMatrix.multV(light.direction);
+      vl = transformedLightPosition.sub(p0);
 
     }
-    if(light.type === 'AMBIENT') {
-      lightIntensity += light.intensity;
+
+    const cos_alpha = vl.dot(normal) / (vl.magnitude() * normal.magnitude());
+    if(cos_alpha > 0) {
+      lightIntensity += cos_alpha * light.intensity
     }
-  })
+
+   })
+
   return lightIntensity;
+
 }
 
-const fillTriangleShaded = (p0, p1, p2, color, lights) => {
+const fillTriangleShaded = ({p0, worldP0}, {p1, worldP1}, {p2, worldP2}, color, lights) => {
 
   const lightIntensity = calculateLightIntensity(
-    new Vector3f(p0.x, p0.y, p0.z),
-    new Vector3f(p1.x, p1.y, p1.z),
-    new Vector3f(p2.x, p2.y, p1.z),
+    new Vector3f(worldP0.x, worldP0.y, worldP0.z),
+    new Vector3f(worldP1.x, worldP1.y, worldP1.z),
+    new Vector3f(worldP2.x, worldP2.y, worldP2.z),
     lights
   );
 
   [p0, p1, p2] = [p0, p1, p2].sort((point1, point2) => point1.y - point2.y);
 
-  console.log('light intensity', lightIntensity)
 
   const xCoordinatesForP1P2 = interpolate(p1.y, p2.y, p1.x, p2.x);
   const xCoordinatesForP0P1 = interpolate(p0.y, p1.y, p0.x, p1.x);
@@ -314,7 +314,7 @@ const fillTriangleShaded = (p0, p1, p2, color, lights) => {
 };
 
 // fillTriangle(triangle[0], triangle[1], triangle[2], RED);
-const cullTriangles = (meshes, worldVertices, camera) => {
+const cullTriangles = (meshes, worldVertices, renderedCamera) => {
   return meshes.filter(mesh => {
     let triangle = {
       a: new Vector3f(worldVertices[mesh[0]].x, worldVertices[mesh[0]].y, worldVertices[mesh[0]].z),
@@ -327,7 +327,7 @@ const cullTriangles = (meshes, worldVertices, camera) => {
 
     let triangleNormal = AB.cross(AC)
 
-    let ABtoCamera = camera.sub(triangle.a)
+    let ABtoCamera = renderedCamera.sub(triangle.a)
 
     let angleWithCamera = ABtoCamera.dot(triangleNormal)
 
@@ -382,9 +382,9 @@ const cube = {
 const instance = {
   model: cube,
   transform: {
-    position: new Vector3f(0, 1, 4),
-    scale: new Vector3f(0.5, 0.5, 0.5),
-    rotation: new Vector3f(0, 1.2, 0),
+    position: new Vector3f(0, 1, 6),
+    scale: new Vector3f(1, 1, 1,),
+    rotation: new Vector3f(0, 1, 0),
   },
 };
 
@@ -398,6 +398,11 @@ const instance2 = {
 };
 
 let sceneInstances = [instance, instance2];
+
+let camera = {
+  position: new Vector3f(0, 0, 0),
+  orientation: new Matrix4().RotateY(new Vector3f(0, 0, 0))
+}
 
 const render = () => {
   sceneInstances.forEach((instance) => {
@@ -423,25 +428,31 @@ const render = () => {
       projectedVertices.push(projectedVertex.toVector3f());
     });
 
-    const culledMesh = cullTriangles(meshes, worldVertices, new Vector3f(0, 0, 0))
+    const culledMesh = cullTriangles(meshes, worldVertices, camera.position)
 
     culledMesh.forEach((mesh) => {
       fillTriangleShaded(
-        viewPortToCanvas({
-          x: projectedVertices[mesh[0]].x,
-          y: projectedVertices[mesh[0]].y,
-          z: projectedVertices[mesh[0]].z,
-        }),
-        viewPortToCanvas({
-          x: projectedVertices[mesh[1]].x,
-          y: projectedVertices[mesh[1]].y,
-          z: projectedVertices[mesh[1]].z,
-        }),
-        viewPortToCanvas({
-          x: projectedVertices[mesh[2]].x,
-          y: projectedVertices[mesh[2]].y,
-          z: projectedVertices[mesh[2]].z,
-        }),
+        {
+          p0: viewPortToCanvas({
+            x: projectedVertices[mesh[0]].x,
+            y: projectedVertices[mesh[0]].y,
+            z: projectedVertices[mesh[0]].z,
+          }),
+          worldP0: worldVertices[mesh[0]]},
+        {
+          p1: viewPortToCanvas({
+            x: projectedVertices[mesh[1]].x,
+            y: projectedVertices[mesh[1]].y,
+            z: projectedVertices[mesh[1]].z,
+          }),
+          worldP1: worldVertices[mesh[1]]},
+        {
+          p2: viewPortToCanvas({
+            x: projectedVertices[mesh[2]].x,
+            y: projectedVertices[mesh[2]].y,
+            z: projectedVertices[mesh[2]].z,
+          }),
+          worldP2: worldVertices[mesh[2]]},
         mesh[3],
         lights,
       );
@@ -461,15 +472,14 @@ const draw = (now) => {
   }
 
   if (now - second > 1000) {
-    console.log('frames per second: ', rendered)
     rendered = 0
     second = now
   }
 
-  if (now - last > 30) {
-clear()
-render();
-blit();
+if (now - last > 30) {
+    clear()
+    render();
+    blit();
 
     i += 0.01;
     rendered += 1
@@ -483,3 +493,4 @@ blit();
 }
 
 draw()
+
