@@ -104,8 +104,8 @@ const interpolate = (i0, i1, d0, d1) => {
 
 let zBuffer = Array(width * height).fill(0);
 const zBufferAccess = (x, y) => {
-  x = Math.floor((canvas.width / 2) + x);
-  y = Math.floor((canvas.height / 2) - y - 1);
+  x = Math.floor(canvas.width / 2 + x);
+  y = Math.floor(canvas.height / 2 - y - 1);
 
   if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) {
     return false;
@@ -115,8 +115,8 @@ const zBufferAccess = (x, y) => {
   return zBuffer[Math.floor(offset)];
 };
 const zBufferWrite = (x, y, value) => {
-  x = Math.floor((canvas.width / 2) + x);
-  y = Math.floor((canvas.height / 2) - y - 1);
+  x = Math.floor(canvas.width / 2 + x);
+  y = Math.floor(canvas.height / 2 - y - 1);
 
   if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) {
     return false;
@@ -183,84 +183,109 @@ const fillTriangle = (p0, p1, p2, color) => {
 
 const clamp = (value, min, max) => {
   return Math.max(min, Math.min(max, value));
-}
+};
 
 const multiplyColorScalar = (color, scalar) => {
   return {
     r: clamp(color.r * scalar, 0, 255),
     g: clamp(color.g * scalar, 0, 255),
     b: clamp(color.b * scalar, 0, 255),
-    a: color.a
-  }
-}
+    a: color.a,
+  };
+};
 
 let lights = [
   {
-    type: 'POINT',
+    type: "POINT",
     position: new Vector3f(-3, 2, -10),
     intensity: 0.9,
   },
   {
-    type: 'DIRECTIONAL',
-    intensity: 0.2,
+    type: "DIRECTIONAL",
+    intensity: 0.1,
     direction: new Vector3f(0, 0, 1),
   },
   {
-    type: 'AMBIENT',
-    intensity: 0.2
-  }
-]
+    type: "AMBIENT",
+    intensity: 0.2,
+  },
+];
 
-const calculateLightIntensity = (p0, p1, p2, lights) => {
+const calculateLightIntensityForEachVertex = (
+  p0,
+  p1,
+  p2,
+  op0,
+  op1,
+  op2,
+  lights
+) => {
   // flatshading - calculando a normal do triangulo:
+  op0.lightIntensity = 0;
+  op1.lightIntensity = 0;
+  op2.lightIntensity = 0;
 
   let v = p1.sub(p0);
   let w = p2.sub(p0);
 
   const normal = v.cross(w);
 
-  let lightIntensity = 0;
-
   let vl;
 
-  lights.forEach(light => {
-    if (light.type === 'POINT') {
-      const cameraOrientation = camera.orientation;
-      const cameraPosition = camera.position;
-      const cameraMatrix = cameraOrientation.Transpose().multM(new Matrix4().Translate(cameraPosition.prod(-1)));
-      const transformedLightPosition = cameraMatrix.multV(light.position);
-      vl = transformedLightPosition.sub(p0);
+  let pointList = [p0, p1, p2];
+  let originalPoints = [op0, op1, op2];
 
-    } else if(light.type === 'DIRECTIONAL') {
-      const cameraOrientation = camera.orientation;
-      const cameraMatrix = cameraOrientation.Transpose();
-      const transformedLightPosition = cameraMatrix.multV(light.direction);
-      vl = transformedLightPosition.sub(p0);
+  let pointIntensity = [];
+  for (let i = 0; i < 3; i++) {
+    let currentPoint = pointList[i];
+    lights.forEach((light) => {
+      if (light.type === "POINT") {
+        const cameraOrientation = camera.orientation;
+        const cameraPosition = camera.position;
+        const cameraMatrix = cameraOrientation
+          .Transpose()
+          .multM(new Matrix4().Translate(cameraPosition.prod(-1)));
+        const transformedLightPosition = cameraMatrix.multV(light.position);
+        vl = transformedLightPosition.sub(currentPoint);
+      } else if (light.type === "DIRECTIONAL") {
+        const cameraOrientation = camera.orientation;
+        const cameraMatrix = cameraOrientation.Transpose();
+        const transformedLightPosition = cameraMatrix.multV(light.direction);
+        vl = transformedLightPosition.sub(currentPoint);
+      }
+      const cos_alpha = vl.dot(normal) / (vl.magnitude() * normal.magnitude());
+      if (cos_alpha > 0) {
+        originalPoints[i].lightIntensity += light.intensity * cos_alpha;
+      }
+      // TODO: add reflective component
+    });
+    pointIntensity.push(originalPoints[i]);
+  }
 
-    }
+  return pointIntensity;
+};
 
-    const cos_alpha = vl.dot(normal) / (vl.magnitude() * normal.magnitude());
-    if(cos_alpha > 0) {
-      lightIntensity += cos_alpha * light.intensity
-    }
-
-   })
-
-  return lightIntensity;
-
-}
-
-const fillTriangleShaded = ({p0, worldP0}, {p1, worldP1}, {p2, worldP2}, color, lights) => {
-
-  const lightIntensity = calculateLightIntensity(
+const fillTriangleShaded = (
+  { p0, worldP0 },
+  { p1, worldP1 },
+  { p2, worldP2 },
+  color,
+  lights
+) => {
+  const lightIntensityPoints = calculateLightIntensityForEachVertex(
     new Vector3f(worldP0.x, worldP0.y, worldP0.z),
     new Vector3f(worldP1.x, worldP1.y, worldP1.z),
     new Vector3f(worldP2.x, worldP2.y, worldP2.z),
+    p0,
+    p1,
+    p2,
     lights
   );
+  // lightIntensityPoints
 
-  [p0, p1, p2] = [p0, p1, p2].sort((point1, point2) => point1.y - point2.y);
-
+  [p0, p1, p2] = lightIntensityPoints.sort(
+    (point1, point2) => point1.y - point2.y
+  );
 
   const xCoordinatesForP1P2 = interpolate(p1.y, p2.y, p1.x, p2.x);
   const xCoordinatesForP0P1 = interpolate(p0.y, p1.y, p0.x, p1.x);
@@ -269,6 +294,25 @@ const fillTriangleShaded = ({p0, worldP0}, {p1, worldP1}, {p2, worldP2}, color, 
   const zCoordinatesForP1P2 = interpolate(p1.y, p2.y, 1.0 / p1.z, 1.0 / p2.z);
   const zCoordinatesForP0P1 = interpolate(p0.y, p1.y, 1.0 / p0.z, 1.0 / p1.z);
   const zCoordinatesForP0P2 = interpolate(p0.y, p2.y, 1.0 / p0.z, 1.0 / p2.z);
+
+  const lightIntensityP1P2 = interpolate(
+    p1.y,
+    p2.y,
+    p1.lightIntensity,
+    p2.lightIntensity
+  );
+  const lightIntensityP0P1 = interpolate(
+    p0.y,
+    p1.y,
+    p0.lightIntensity,
+    p1.lightIntensity
+  );
+  const lightIntensityP0P2 = interpolate(
+    p0.y,
+    p2.y,
+    p0.lightIntensity,
+    p2.lightIntensity
+  );
 
   xCoordinatesForP0P1.pop();
   const xCoordinatesForSmallerSide = [
@@ -282,31 +326,45 @@ const fillTriangleShaded = ({p0, worldP0}, {p1, worldP1}, {p2, worldP2}, color, 
     ...zCoordinatesForP1P2,
   ];
 
+  lightIntensityP0P1.pop();
+  const lightIntensitySmallerSide = [
+    ...lightIntensityP0P1,
+    ...lightIntensityP1P2,
+  ];
+
   const midIndex = Math.floor(xCoordinatesForP0P2.length / 2);
 
-  let xLeft, xRight, zLeft, zRight;
+  let xLeft, xRight, zLeft, zRight, lightLeft, lightRight;
   if (xCoordinatesForP0P2[midIndex] < xCoordinatesForSmallerSide[midIndex]) {
     [xLeft, xRight] = [xCoordinatesForP0P2, xCoordinatesForSmallerSide];
     [zLeft, zRight] = [zCoordinatesForP0P2, zCoordinatesForSmallerSide];
+    [lightLeft, lightRight] = [lightIntensityP0P2, lightIntensitySmallerSide];
   } else {
     [xLeft, xRight] = [xCoordinatesForSmallerSide, xCoordinatesForP0P2];
     [zLeft, zRight] = [zCoordinatesForSmallerSide, zCoordinatesForP0P2];
+    [lightLeft, lightRight] = [lightIntensitySmallerSide, lightIntensityP0P2];
   }
 
   for (let y = p0.y; y < p2.y; y++) {
     let currentIndex = Math.floor(y - p0.y);
 
     let [xFloor, xCeiling] = [xLeft[currentIndex], xRight[currentIndex]];
+    let [lightFloor, lightCeiling] = [
+      lightLeft[currentIndex],
+      lightRight[currentIndex],
+    ];
 
-    let [zl, zr] = [zLeft[currentIndex], zRight[currentIndex]]
+    let [zl, zr] = [zLeft[currentIndex], zRight[currentIndex]];
     let zScan = interpolate(xFloor, xCeiling, zl, zr);
 
-    // drawLine({ x: xFloor, y: y }, { x: xCeiling, y: y }, color)
+    let lightScan = interpolate(xFloor, xCeiling, lightFloor, lightCeiling);
+
     for (let x = xFloor; x < xCeiling; x++) {
       let currentZ = zScan[Math.floor(x - xFloor)];
-      putPixel(x, y, multiplyColorScalar(color, lightIntensity));
+      let currentLight = lightScan[Math.floor(x - xFloor)];
+      putPixel(x, y, multiplyColorScalar(color, currentLight));
       if (zBufferAccess(x, y) <= currentZ) {
-        putPixel(x, y, multiplyColorScalar(color, lightIntensity));
+        putPixel(x, y, multiplyColorScalar(color, currentLight));
         zBufferWrite(x, y, currentZ);
       }
     }
@@ -315,28 +373,39 @@ const fillTriangleShaded = ({p0, worldP0}, {p1, worldP1}, {p2, worldP2}, color, 
 
 // fillTriangle(triangle[0], triangle[1], triangle[2], RED);
 const cullTriangles = (meshes, worldVertices, renderedCamera) => {
-  return meshes.filter(mesh => {
+  return meshes.filter((mesh) => {
     let triangle = {
-      a: new Vector3f(worldVertices[mesh[0]].x, worldVertices[mesh[0]].y, worldVertices[mesh[0]].z),
-      b: new Vector3f(worldVertices[mesh[1]].x, worldVertices[mesh[1]].y, worldVertices[mesh[1]].z),
-      c: new Vector3f(worldVertices[mesh[2]].x, worldVertices[mesh[2]].y, worldVertices[mesh[2]].z)
-    }
+      a: new Vector3f(
+        worldVertices[mesh[0]].x,
+        worldVertices[mesh[0]].y,
+        worldVertices[mesh[0]].z
+      ),
+      b: new Vector3f(
+        worldVertices[mesh[1]].x,
+        worldVertices[mesh[1]].y,
+        worldVertices[mesh[1]].z
+      ),
+      c: new Vector3f(
+        worldVertices[mesh[2]].x,
+        worldVertices[mesh[2]].y,
+        worldVertices[mesh[2]].z
+      ),
+    };
 
-    let AB = triangle.b.sub(triangle.a)
-    let AC = triangle.c.sub(triangle.a)
+    let AB = triangle.b.sub(triangle.a);
+    let AC = triangle.c.sub(triangle.a);
 
-    let triangleNormal = AB.cross(AC)
+    let triangleNormal = AB.cross(AC);
 
-    let ABtoCamera = renderedCamera.sub(triangle.a)
+    let ABtoCamera = renderedCamera.sub(triangle.a);
 
-    let angleWithCamera = ABtoCamera.dot(triangleNormal)
+    let angleWithCamera = ABtoCamera.dot(triangleNormal);
 
     if (angleWithCamera > 0) {
-      return mesh
+      return mesh;
     }
-
-  })
-}
+  });
+};
 
 const drawTriangle = (p1, p2, p3, color) => {
   drawLine(p1, p2, color);
@@ -349,7 +418,7 @@ const PLANE_WIDTH = 1;
 const PLANE_HEIGHT = 1;
 
 const viewPortToCanvas = ({ x, y, z }) => {
-  return { x: x * (width / PLANE_WIDTH), y: y * (height / PLANE_HEIGHT), z: z};
+  return { x: x * (width / PLANE_WIDTH), y: y * (height / PLANE_HEIGHT), z: z };
 };
 
 const cube = {
@@ -383,7 +452,7 @@ const instance = {
   model: cube,
   transform: {
     position: new Vector3f(0, 1, 6),
-    scale: new Vector3f(1, 1, 1,),
+    scale: new Vector3f(1, 1, 1),
     rotation: new Vector3f(0, 1, 0),
   },
 };
@@ -401,14 +470,14 @@ let sceneInstances = [instance, instance2];
 
 let camera = {
   position: new Vector3f(0, 0, 0),
-  orientation: new Matrix4().RotateY(new Vector3f(0, 0, 0))
-}
+  orientation: new Matrix4().RotateY(new Vector3f(0, 0, 0)),
+};
 
 const render = () => {
   sceneInstances.forEach((instance) => {
     const projectedVertices = [];
-    const worldVertices = []
-    const { meshes } = instance.model
+    const worldVertices = [];
+    const { meshes } = instance.model;
 
     instance.model.vertices.forEach((vertex) => {
       const { position, scale, rotation } = instance.transform;
@@ -419,16 +488,17 @@ const render = () => {
 
       // estou usando no culling os pontos ja projetados
       // deveria usar os pontos tridimensionais e nao os
-      const worldCoordinates = translating.multM(rotating.multM(scaling))
+      const worldCoordinates = translating
+        .multM(rotating.multM(scaling))
         .multV(vertex);
-      worldVertices.push(worldCoordinates)
+      worldVertices.push(worldCoordinates);
 
-      const projectedVertex = projecting.multV(worldCoordinates)
+      const projectedVertex = projecting.multV(worldCoordinates);
 
       projectedVertices.push(projectedVertex.toVector3f());
     });
 
-    const culledMesh = cullTriangles(meshes, worldVertices, camera.position)
+    const culledMesh = cullTriangles(meshes, worldVertices, camera.position);
 
     culledMesh.forEach((mesh) => {
       fillTriangleShaded(
@@ -438,59 +508,59 @@ const render = () => {
             y: projectedVertices[mesh[0]].y,
             z: projectedVertices[mesh[0]].z,
           }),
-          worldP0: worldVertices[mesh[0]]},
+          worldP0: worldVertices[mesh[0]],
+        },
         {
           p1: viewPortToCanvas({
             x: projectedVertices[mesh[1]].x,
             y: projectedVertices[mesh[1]].y,
             z: projectedVertices[mesh[1]].z,
           }),
-          worldP1: worldVertices[mesh[1]]},
+          worldP1: worldVertices[mesh[1]],
+        },
         {
           p2: viewPortToCanvas({
             x: projectedVertices[mesh[2]].x,
             y: projectedVertices[mesh[2]].y,
             z: projectedVertices[mesh[2]].z,
           }),
-          worldP2: worldVertices[mesh[2]]},
+          worldP2: worldVertices[mesh[2]],
+        },
         mesh[3],
-        lights,
+        lights
       );
     });
-
-
   });
 };
 
 let i = 0;
-let last = null
-let second = null
-let rendered = 0
+let last = null;
+let second = null;
+let rendered = 0;
 const draw = (now) => {
   if (!last) {
-    last = now
+    last = now;
   }
 
   if (now - second > 1000) {
-    rendered = 0
-    second = now
+    rendered = 0;
+    second = now;
   }
 
-if (now - last > 30) {
-    clear()
+  if (now - last > 30) {
+    clear();
     render();
     blit();
 
     i += 0.01;
-    rendered += 1
+    rendered += 1;
 
-    instance.transform.rotation = new Vector3f(0, i, 0)
-    instance2.transform.rotation = new Vector3f(0, -1.3 * i, 0)
-    last = now
+    instance.transform.rotation = new Vector3f(0, i, 0);
+    instance2.transform.rotation = new Vector3f(0, -1.3 * i, 0);
+    last = now;
   }
 
-  requestAnimationFrame(draw)
-}
+  requestAnimationFrame(draw);
+};
 
-draw()
-
+draw();
