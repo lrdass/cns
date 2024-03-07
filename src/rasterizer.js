@@ -38,7 +38,6 @@ const putPixel = (x, y, color) => {
   let canvasX = width / 2 + x;
   let canvasY = height / 2 - y;
 
-
   canvasPixel(canvasX, canvasY, color.r, color.g, color.b, color.a);
 };
 
@@ -75,7 +74,7 @@ const drawLine = (p0, p1, color) => {
       // x = x + a;
     }
   }
-  blit()
+  blit();
 };
 
 const RED = { r: 255, g: 0, b: 0, a: 255 };
@@ -166,7 +165,7 @@ const fillTriangle = (p0, p1, p2, color) => {
 
     let [xFloor, xCeiling] = [xLeft[currentIndex], xRight[currentIndex]];
 
-    let [zl, zr] = [zLeft[currentIndex], zRight[currentIndex]]
+    let [zl, zr] = [zLeft[currentIndex], zRight[currentIndex]];
     let zScan = interpolate(xFloor, xCeiling, zl, zr);
 
     // drawLine({ x: xFloor, y: y }, { x: xCeiling, y: y }, color)
@@ -218,13 +217,21 @@ const calculateLightIntensityForEachVertex = (
   op0,
   op1,
   op2,
+  p0Normal,
+  p1Normal,
+  p2Normal,
   lights
 ) => {
-  // flatshading - calculando a normal do triangulo:
   op0.lightIntensity = 0;
   op1.lightIntensity = 0;
   op2.lightIntensity = 0;
 
+  /**
+   * TODO:
+   * This should be removed. Instead, the caculateLightIntensity should expect the normal at the given point.
+   * Then, it should calculate the lightIntesity for the vertex point.
+   *
+   */
   let v = p1.sub(p0);
   let w = p2.sub(p0);
 
@@ -236,6 +243,11 @@ const calculateLightIntensityForEachVertex = (
   let originalPoints = [op0, op1, op2];
 
   let pointIntensity = [];
+  /*
+   * TODO:
+   * This is computing lighting wrong. It is summing light from all three vertices all-together.
+   * This should instead calculate the lighting for a given point, and a given normal.
+   * */
   for (let i = 0; i < 3; i++) {
     let currentPoint = pointList[i];
     lights.forEach((light) => {
@@ -266,9 +278,9 @@ const calculateLightIntensityForEachVertex = (
 };
 
 const fillTriangleShaded = (
-  { p0, worldP0 },
-  { p1, worldP1 },
-  { p2, worldP2 },
+  { p0, worldP0, p0Normal },
+  { p1, worldP1, p1Normal },
+  { p2, worldP2, p2Normal },
   color,
   lights
 ) => {
@@ -279,6 +291,9 @@ const fillTriangleShaded = (
     p0,
     p1,
     p2,
+    p0Normal,
+    p1Normal,
+    p2Normal,
     lights
   );
   // lightIntensityPoints
@@ -376,19 +391,19 @@ const cullTriangles = (meshes, worldVertices, renderedCamera) => {
   return meshes.filter((mesh) => {
     let triangle = {
       a: new Vector3f(
-        worldVertices[mesh[0]].x,
-        worldVertices[mesh[0]].y,
-        worldVertices[mesh[0]].z
+        worldVertices[mesh.vertices[0]].x,
+        worldVertices[mesh.vertices[0]].y,
+        worldVertices[mesh.vertices[0]].z
       ),
       b: new Vector3f(
-        worldVertices[mesh[1]].x,
-        worldVertices[mesh[1]].y,
-        worldVertices[mesh[1]].z
+        worldVertices[mesh.vertices[1]].x,
+        worldVertices[mesh.vertices[1]].y,
+        worldVertices[mesh.vertices[1]].z
       ),
       c: new Vector3f(
-        worldVertices[mesh[2]].x,
-        worldVertices[mesh[2]].y,
-        worldVertices[mesh[2]].z
+        worldVertices[mesh.vertices[2]].x,
+        worldVertices[mesh.vertices[2]].y,
+        worldVertices[mesh.vertices[2]].z
       ),
     };
 
@@ -421,6 +436,11 @@ const viewPortToCanvas = ({ x, y, z }) => {
   return { x: x * (width / PLANE_WIDTH), y: y * (height / PLANE_HEIGHT), z: z };
 };
 
+/**
+ * TODO:
+ * Migrate this cube object definition to a separate file, where this can be instantiated as it wills.
+ * Also, it should create a sphere so gourad for spheres with proper normals could be properly rendered
+ */
 const cube = {
   vertices: [
     { x: -1, y: 1, z: -1 }, // a  0
@@ -433,18 +453,126 @@ const cube = {
     { x: -1, y: -1, z: 1 }, //h   7
   ],
   meshes: [
-    [0, 1, 3, CYAN], //abd
-    [1, 2, 3, CYAN], // bcd
-    [1, 6, 2, PINK], // bgc
-    [1, 5, 6, PINK], // bfg
-    [4, 0, 7, GREEN], // eah
-    [0, 3, 7, GREEN], // adh
-    [3, 2, 7, YELLOW], // dch
-    [7, 2, 6, YELLOW], // hcg
-    [0, 4, 1, RED], //aeb
-    [4, 5, 1, RED], //efb
-    [5, 4, 7, BLUE], // feh
-    [5, 7, 6, BLUE], // fhg
+    {
+      // abd
+      vertices: [0, 1, 3],
+      color: CYAN,
+      normals: [
+        new Vector3f(0, 0, -1),
+        new Vector3f(0, 0, -1),
+        new Vector3f(0, 0, -1),
+      ],
+    },
+    {
+      //bcd
+      vertices: [1, 2, 3],
+      color: CYAN,
+      normals: [
+        new Vector3f(0, 0, -1),
+        new Vector3f(0, 0, -1),
+        new Vector3f(0, 0, -1),
+      ],
+    },
+    {
+      //bgc
+      vertices: [1, 6, 2],
+      color: PINK,
+      normals: [
+        new Vector3f(1, 0, 0),
+        new Vector3f(1, 0, 0),
+        new Vector3f(1, 0, 0),
+      ],
+    },
+    {
+      //bfg
+      vertices: [1, 5, 6],
+      color: PINK,
+      normals: [
+        new Vector3f(1, 0, 0),
+        new Vector3f(1, 0, 0),
+        new Vector3f(1, 0, 0),
+      ],
+    },
+    {
+      // eah
+      vertices: [4, 0, 7],
+      color: GREEN,
+      normals: [
+        new Vector3f(-1, 0, 0),
+        new Vector3f(-1, 0, 0),
+        new Vector3f(-1, 0, 0),
+      ],
+    },
+    {
+      // adh
+      vertices: [0, 3, 7],
+      color: GREEN,
+      normals: [
+        new Vector3f(-1, 0, 0),
+        new Vector3f(-1, 0, 0),
+        new Vector3f(-1, 0, 0),
+      ],
+    },
+    {
+      // dch
+      vertices: [3, 2, 7],
+      color: YELLOW,
+      normals: [
+        new Vector3f(0, -1, 0),
+        new Vector3f(0, -1, 0),
+        new Vector3f(0, -1, 0),
+      ],
+    },
+    {
+      // hcg
+      vertices: [7, 2, 6],
+      color: YELLOW,
+      normals: [
+        new Vector3f(0, -1, 0),
+        new Vector3f(0, -1, 0),
+        new Vector3f(0, -1, 0),
+      ],
+    },
+    {
+      // aeb
+      vertices: [0, 4, 1],
+      color: RED,
+      normals: [
+        new Vector3f(0, 1, 0),
+        new Vector3f(0, 1, 0),
+        new Vector3f(0, 1, 0),
+      ],
+    },
+    {
+      // efb
+      vertices: [0, 4, 1],
+      color: RED,
+      normals: [
+        new Vector3f(0, 1, 0),
+        new Vector3f(0, 1, 0),
+        new Vector3f(0, 1, 0),
+      ],
+    },
+    {
+      // feh
+      vertices: [5, 4, 7],
+      color: BLUE,
+      normals: [
+        new Vector3f(0, 0, 1),
+        new Vector3f(0, 0, 1),
+        new Vector3f(0, 0, 1),
+      ],
+    },
+    {
+      // fhg
+      vertices: [5, 7, 6],
+      color: BLUE,
+      normals: [
+        new Vector3f(0, 0, 1),
+        new Vector3f(0, 0, 1),
+        new Vector3f(0, 0, 1),
+      ],
+    },
   ],
 };
 
@@ -457,6 +585,7 @@ const instance = {
   },
 };
 
+/*
 const instance2 = {
   model: cube,
   transform: {
@@ -465,8 +594,9 @@ const instance2 = {
     rotation: new Vector3f(0, 2.1, 0),
   },
 };
+*/
 
-let sceneInstances = [instance, instance2];
+let sceneInstances = [instance];
 
 let camera = {
   position: new Vector3f(0, 0, 0),
@@ -504,40 +634,44 @@ const render = () => {
       fillTriangleShaded(
         {
           p0: viewPortToCanvas({
-            x: projectedVertices[mesh[0]].x,
-            y: projectedVertices[mesh[0]].y,
-            z: projectedVertices[mesh[0]].z,
+            x: projectedVertices[mesh.vertices[0]].x,
+            y: projectedVertices[mesh.vertices[0]].y,
+            z: projectedVertices[mesh.vertices[0]].z,
           }),
-          worldP0: worldVertices[mesh[0]],
+          worldP0: worldVertices[mesh.vertices[0]],
+          p0Normal: mesh.normals[0],
         },
         {
           p1: viewPortToCanvas({
-            x: projectedVertices[mesh[1]].x,
-            y: projectedVertices[mesh[1]].y,
-            z: projectedVertices[mesh[1]].z,
+            x: projectedVertices[mesh.vertices[1]].x,
+            y: projectedVertices[mesh.vertices[1]].y,
+            z: projectedVertices[mesh.vertices[1]].z,
           }),
-          worldP1: worldVertices[mesh[1]],
+          worldP1: worldVertices[mesh.vertices[1]],
+          p1Normal: mesh.normals[1],
         },
         {
           p2: viewPortToCanvas({
-            x: projectedVertices[mesh[2]].x,
-            y: projectedVertices[mesh[2]].y,
-            z: projectedVertices[mesh[2]].z,
+            x: projectedVertices[mesh.vertices[2]].x,
+            y: projectedVertices[mesh.vertices[2]].y,
+            z: projectedVertices[mesh.vertices[2]].z,
           }),
-          worldP2: worldVertices[mesh[2]],
+          worldP2: worldVertices[mesh.vertices[2]],
+          p2Normal: mesh.normals[2],
         },
-        mesh[3],
+        mesh.color,
         lights
       );
     });
   });
 };
 
+/*
 let i = 0;
 let last = null;
 let second = null;
 let rendered = 0;
-const draw = (now) => {
+  const draw = (now) => {
   if (!last) {
     last = now;
   }
@@ -564,3 +698,9 @@ const draw = (now) => {
 };
 
 draw();
+
+*/
+
+clear();
+render();
+blit();
