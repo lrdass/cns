@@ -1,6 +1,4 @@
-import { Matrix4, Vector3f } from "./math";
-
-let lightDistanceSlider = document.getElementById("light_position");
+import { Matrix4, Vector3f } from "./math.js";
 
 const canvas = document.getElementById("canvas");
 const context = canvas.getContext("2d");
@@ -441,6 +439,56 @@ const viewPortToCanvas = ({ x, y, z }) => {
  * Migrate this cube object definition to a separate file, where this can be instantiated as it wills.
  * Also, it should create a sphere so gourad for spheres with proper normals could be properly rendered
  */
+
+const generateSphere = (divs, color) => {
+  let vertices = [];
+  let meshes = [];
+
+  let delta_angle = (2.0 * Math.PI) / divs;
+
+  // Generate vertices and normals.
+  for (let d = 0; d < divs + 1; d++) {
+    let y = (2.0 / divs) * (d - divs / 2);
+    let radius = Math.sqrt(1.0 - y * y);
+    for (let i = 0; i < divs; i++) {
+      const vertex = new Vector3f(
+        radius * Math.cos(i * delta_angle),
+        y,
+        radius * Math.sin(i * delta_angle)
+      );
+      vertices.push(vertex);
+    }
+  }
+
+  // Generate triangles.
+  for (let d = 0; d < divs; d++) {
+    for (let i = 0; i < divs; i++) {
+      let i0 = d * divs + i;
+      let i1 = (d + 1) * divs + ((i + 1) % divs);
+      let i2 = divs * d + ((i + 1) % divs);
+      let tri0 = [i0, i1, i2];
+      let tri1 = [i0, i0 + divs, i1];
+
+      meshes.push({
+        vertices: tri0,
+        normals: [vertices[tri0[0]], vertices[tri0[1]], vertices[tri0[2]]],
+        color,
+      });
+
+      meshes.push({
+        vertices: tri1,
+        normals: [vertices[tri1[0]], vertices[tri1[1]], vertices[tri1[2]]],
+        color,
+      });
+    }
+  }
+
+  return {
+    vertices,
+    meshes,
+  };
+};
+
 const cube = {
   vertices: [
     { x: -1, y: 1, z: -1 }, // a  0
@@ -576,10 +624,12 @@ const cube = {
   ],
 };
 
+const sphere = generateSphere(16, GREEN);
+
 const instance = {
-  model: cube,
+  model: sphere,
   transform: {
-    position: new Vector3f(0, 1, 6),
+    position: new Vector3f(0, 0, 3),
     scale: new Vector3f(1, 1, 1),
     rotation: new Vector3f(0, 1, 0),
   },
