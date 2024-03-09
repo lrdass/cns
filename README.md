@@ -1,6 +1,6 @@
 # Codebase da softengine - Rasterizador 3D do Fractal de Tomate
 
-Esta é a codebase do projeto de renderizador softengine (sem acelerador grafico; apenas CPU) do blog tomatofractal.io
+Esta é a codebase do projeto de renderizador softengine (sem acelerador grafico; apenas CPU) do blog http://tomatofractal.io/category/rasterizer.html
 
 Atualmente implementado:
 
