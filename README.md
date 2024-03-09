@@ -16,7 +16,8 @@ Atualmente implementado:
 - [ ] Mapeamento de texturas
 
 O objetivo deste repositorio é com fins didaticos, futuras melhorias vao incluir:
-- [ ] Melhoramento da biblioteca de Algebra linear (usando closures) 
+- [ ] Melhoramento da biblioteca de Algebra linear (usando closures)
+- [ ] Adicionar à biblioteca de Algebra Linear Quaternions
 - [ ] Implementaçao de um rasterizador com WebGL2
 - [ ] Implementaçao de shadow map
 - [ ] Algoritmos de flocking apenas para benchmark
