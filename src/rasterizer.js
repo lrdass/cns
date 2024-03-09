@@ -86,23 +86,23 @@ const interpolate = (i0, i1, d0, d1) => {
   if (i0 === i1) {
     return [d0];
   }
-  [i0, i1] = [i0, i1].sort((x, y) => x > y);
+
   let values = [];
   let a = (d1 - d0) / (i1 - i0);
   let d = d0;
-  // acho que existe um erro aqui ; esse for parece iterar sobre
-  // valores discretos
-  for (let i = i0; i < i1; i++) {
+  for (let i = i0; i <= i1; i++) {
     values.push(d);
     d += a;
   }
+
   return values;
 };
 
 let zBuffer = Array(width * height).fill(0);
+
 const zBufferAccess = (x, y) => {
-  x = Math.floor(canvas.width / 2 + x);
-  y = Math.floor(canvas.height / 2 - y - 1);
+  x = canvas.width / 2 + (x | 0);
+  y = canvas.height / 2 - (y | 0) - 1;
 
   if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) {
     return false;
@@ -111,9 +111,10 @@ const zBufferAccess = (x, y) => {
   let offset = x + canvas.width * y;
   return zBuffer[Math.floor(offset)];
 };
+
 const zBufferWrite = (x, y, value) => {
-  x = Math.floor(canvas.width / 2 + x);
-  y = Math.floor(canvas.height / 2 - y - 1);
+  x = canvas.width / 2 + (x | 0);
+  y = canvas.height / 2 - (y | 0) - 1;
 
   if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) {
     return false;
@@ -158,8 +159,8 @@ const fillTriangle = (p0, p1, p2, color) => {
     [zLeft, zRight] = [zCoordinatesForSmallerSide, zCoordinatesForP0P2];
   }
 
-  for (let y = p0.y; y < p2.y; y++) {
-    let currentIndex = Math.floor(y - p0.y);
+  for (let y = p0.y; y <= p2.y; y++) {
+    let currentIndex = y - p0.y;
 
     let [xFloor, xCeiling] = [xLeft[currentIndex], xRight[currentIndex]];
 
@@ -167,8 +168,8 @@ const fillTriangle = (p0, p1, p2, color) => {
     let zScan = interpolate(xFloor, xCeiling, zl, zr);
 
     // drawLine({ x: xFloor, y: y }, { x: xCeiling, y: y }, color)
-    for (let x = xFloor; x < xCeiling; x++) {
-      let currentZ = zScan[Math.floor(x - xFloor)];
+    for (let x = xFloor; x <= xCeiling; x++) {
+      let currentZ = zScan[x - xFloor];
       putPixel(x, y, color);
       if (zBufferAccess(x, y) <= currentZ) {
         putPixel(x, y, color);
@@ -345,7 +346,7 @@ const fillTriangleShaded = (
     ...lightIntensityP1P2,
   ];
 
-  const midIndex = Math.floor(xCoordinatesForP0P2.length / 2);
+  const midIndex = (xCoordinatesForP0P2.length / 2) | 0;
 
   let xLeft, xRight, zLeft, zRight, lightLeft, lightRight;
   if (xCoordinatesForP0P2[midIndex] < xCoordinatesForSmallerSide[midIndex]) {
@@ -358,10 +359,13 @@ const fillTriangleShaded = (
     [lightLeft, lightRight] = [lightIntensitySmallerSide, lightIntensityP0P2];
   }
 
-  for (let y = p0.y; y < p2.y; y++) {
-    let currentIndex = Math.floor(y - p0.y);
+  for (let y = p0.y; y <= p2.y; y++) {
+    let currentIndex = y - p0.y;
 
-    let [xFloor, xCeiling] = [xLeft[currentIndex], xRight[currentIndex]];
+    let [xFloor, xCeiling] = [
+      xLeft[currentIndex] | 0,
+      xRight[currentIndex] | 0,
+    ];
     let [lightFloor, lightCeiling] = [
       lightLeft[currentIndex],
       lightRight[currentIndex],
@@ -372,7 +376,7 @@ const fillTriangleShaded = (
 
     let lightScan = interpolate(xFloor, xCeiling, lightFloor, lightCeiling);
 
-    for (let x = xFloor; x < xCeiling; x++) {
+    for (let x = xFloor; x <= xCeiling; x++) {
       let currentZ = zScan[Math.floor(x - xFloor)];
       let currentLight = lightScan[Math.floor(x - xFloor)];
       putPixel(x, y, multiplyColorScalar(color, currentLight));
@@ -431,7 +435,11 @@ const PLANE_WIDTH = 1;
 const PLANE_HEIGHT = 1;
 
 const viewPortToCanvas = ({ x, y, z }) => {
-  return { x: x * (width / PLANE_WIDTH), y: y * (height / PLANE_HEIGHT), z: z };
+  return {
+    x: Math.floor(x * (width / PLANE_WIDTH)),
+    y: Math.floor(y * (height / PLANE_HEIGHT)),
+    z: z,
+  };
 };
 
 /**
