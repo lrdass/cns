@@ -3,18 +3,19 @@
 Esta é a codebase do projeto de renderizador softengine (sem acelerador grafico; apenas CPU) do blog tomatofractal.io
 
 Atualmente implementado:
-[x] Biblioteca basica vetores/Matrizes 
-[x] Rasterizador de triangulos
-[x] Bresenhan para linhas
-[x] Backface culling
-[x] Matriz de projeção
-[x] Projecao > Viewport > Canvas pipeline
-[x] Flat-shading 
-[x] Gourad shading
-[ ] Mapeamento de texturas
-[ ] Phong
-[ ] WebGL
-[ ] Wasm
+
+- [x] Biblioteca basica vetores/Matrizes 
+- [x] Rasterizador de triangulos
+- [x] Bresenhan para linhas
+- [x] Backface culling
+- [x] Matriz de projeção
+- [x] Projecao > Viewport > Canvas pipeline
+- [x] Flat-shading 
+- [x] Gourad shading
+- [ ] Phong (sendo desenvolvido atualmente) 
+- [ ] Mapeamento de texturas
+- [ ] WebGL
+- [ ] Wasm
 
 O objetivo desse rasterizador é apenas didatico. 
 
