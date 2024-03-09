@@ -29,6 +29,17 @@ A intenção é ir do 0 à uma ferramenta capaz de criar jogos simples, sem anim
 
 <img width="582" alt="Captura de Tela 2024-03-08 às 23 52 57" src="https://github.com/lrdass/cns/assets/66750963/3810e0dd-fcee-4f34-bd5f-cdf6bf53f588">
 
+# Como rodar:
+
+Apos clonar o projeto, basta rodar:
+```yarn```
+para instalar as dependencias
+
+e para rodar:
+
+```yarn dev```
+
+
 
 # Codebase for rasterizer
 
