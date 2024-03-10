@@ -29,6 +29,8 @@ A meta deste blog é a partir dos conceitos basicos de rasterização construir,
 A intenção é ir do 0 à uma ferramenta capaz de criar jogos simples, sem animaçoes de bones.
 
 <img width="582" alt="Captura de Tela 2024-03-08 às 23 52 57" src="https://github.com/lrdass/cns/assets/66750963/3810e0dd-fcee-4f34-bd5f-cdf6bf53f588">
+<img width="470" alt="Captura de Tela 2024-03-10 às 09 21 12" src="https://github.com/lrdass/cns/assets/66750963/7ef55a5a-f20b-4fd2-ae00-2eba10d4a49f">
+
 
 # Como rodar:
 
