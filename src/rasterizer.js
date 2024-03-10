@@ -209,98 +209,71 @@ let lights = [
   },
 ];
 
-const calculateLightIntensityForEachVertex = (
-  p0,
-  p1,
-  p2,
-  op0,
-  op1,
-  op2,
-  p0Normal,
-  p1Normal,
-  p2Normal,
-  lights
-) => {
-  op0.lightIntensity = 0;
-  op1.lightIntensity = 0;
-  op2.lightIntensity = 0;
+const calculateLightIntensity = (point, worldPoint, vertexNormal, lights) => {
+  let totalLight = 0;
+  let lightDirection;
 
-  /**
-   * TODO:
-   * This should be removed. Instead, the caculateLightIntensity should expect the normal at the given point.
-   * Then, it should calculate the lightIntesity for the vertex point.
-   *
-   */
-  let v = p1.sub(p0);
-  let w = p2.sub(p0);
+  lights.forEach((light) => {
+    if (light.type === "POINT") {
+      const cameraOrientation = camera.orientation;
+      const cameraPosition = camera.position;
+      const cameraMatrix = cameraOrientation
+        .Transpose()
+        .multM(new Matrix4().Translate(cameraPosition.prod(-1)));
+      const transformedLightPosition = cameraMatrix.multV(light.position);
+      lightDirection = transformedLightPosition.sub(worldPoint);
+    } else if (light.type === "DIRECTIONAL") {
+      const cameraOrientation = camera.orientation;
+      const cameraMatrix = cameraOrientation.Transpose();
+      const transformedLightPosition = cameraMatrix.multV(light.direction);
+      lightDirection = transformedLightPosition.sub(worldPoint);
+    } else {
+      totalLight += light.intensity;
+    }
 
-  const normal = v.cross(w);
+    const cos_alpha =
+      lightDirection.dot(vertexNormal) /
+      (lightDirection.magnitude() * vertexNormal.magnitude());
 
-  let vl;
+    if (cos_alpha > 0) {
+      totalLight += cos_alpha * light.intensity;
+    }
 
-  let pointList = [p0, p1, p2];
-  let originalPoints = [op0, op1, op2];
+    // TODO: add reflective component
+  });
 
-  let pointIntensity = [];
-  /*
-   * TODO:
-   * This is computing lighting wrong. It is summing light from all three vertices all-together.
-   * This should instead calculate the lighting for a given point, and a given normal.
-   * */
-  for (let i = 0; i < 3; i++) {
-    let currentPoint = pointList[i];
-    lights.forEach((light) => {
-      if (light.type === "POINT") {
-        const cameraOrientation = camera.orientation;
-        const cameraPosition = camera.position;
-        const cameraMatrix = cameraOrientation
-          .Transpose()
-          .multM(new Matrix4().Translate(cameraPosition.prod(-1)));
-        const transformedLightPosition = cameraMatrix.multV(light.position);
-        vl = transformedLightPosition.sub(currentPoint);
-      } else if (light.type === "DIRECTIONAL") {
-        const cameraOrientation = camera.orientation;
-        const cameraMatrix = cameraOrientation.Transpose();
-        const transformedLightPosition = cameraMatrix.multV(light.direction);
-        vl = transformedLightPosition.sub(currentPoint);
-      }
-      const cos_alpha = vl.dot(normal) / (vl.magnitude() * normal.magnitude());
-      if (cos_alpha > 0) {
-        originalPoints[i].lightIntensity += light.intensity * cos_alpha;
-      }
-      // TODO: add reflective component
-    });
-    pointIntensity.push(originalPoints[i]);
-  }
-
-  return pointIntensity;
+  return totalLight;
 };
 
-const fillTriangleShaded = (
-  { p0, worldP0, p0Normal },
-  { p1, worldP1, p1Normal },
-  { p2, worldP2, p2Normal },
-  color,
-  lights
-) => {
-  const lightIntensityPoints = calculateLightIntensityForEachVertex(
-    new Vector3f(worldP0.x, worldP0.y, worldP0.z),
-    new Vector3f(worldP1.x, worldP1.y, worldP1.z),
-    new Vector3f(worldP2.x, worldP2.y, worldP2.z),
-    p0,
-    p1,
-    p2,
-    p0Normal,
-    p1Normal,
-    p2Normal,
+const fillTriangleShaded = (vertex0, vertex1, vertex2, color, lights) => {
+  [vertex0, vertex1, vertex2] = [vertex0, vertex1, vertex2].sort(
+    (v1, v2) => v1.point.y - v2.point.y
+  );
+
+  const lightIntensityP0 = calculateLightIntensity(
+    vertex0.point,
+    vertex0.world,
+    vertex0.normal,
     lights
   );
-  // lightIntensityPoints
-
-  [p0, p1, p2] = lightIntensityPoints.sort(
-    (point1, point2) => point1.y - point2.y
+  const lightIntensityP1 = calculateLightIntensity(
+    vertex1.point,
+    vertex1.world,
+    vertex1.normal,
+    lights
+  );
+  const lightIntensityP2 = calculateLightIntensity(
+    vertex2.point,
+    vertex2.world,
+    vertex2.normal,
+    lights
   );
 
+  const p0 = vertex0.point;
+  const p1 = vertex1.point;
+  const p2 = vertex2.point;
+
+  // TODO: This could be refactored into a fcuntion call
   const xCoordinatesForP1P2 = interpolate(p1.y, p2.y, p1.x, p2.x);
   const xCoordinatesForP0P1 = interpolate(p0.y, p1.y, p0.x, p1.x);
   const xCoordinatesForP0P2 = interpolate(p0.y, p2.y, p0.x, p2.x);
@@ -312,20 +285,20 @@ const fillTriangleShaded = (
   const lightIntensityP1P2 = interpolate(
     p1.y,
     p2.y,
-    p1.lightIntensity,
-    p2.lightIntensity
+    lightIntensityP1,
+    lightIntensityP2
   );
   const lightIntensityP0P1 = interpolate(
     p0.y,
     p1.y,
-    p0.lightIntensity,
-    p1.lightIntensity
+    lightIntensityP0,
+    lightIntensityP1
   );
   const lightIntensityP0P2 = interpolate(
     p0.y,
     p2.y,
-    p0.lightIntensity,
-    p2.lightIntensity
+    lightIntensityP0,
+    lightIntensityP2
   );
 
   xCoordinatesForP0P1.pop();
@@ -388,7 +361,6 @@ const fillTriangleShaded = (
   }
 };
 
-// fillTriangle(triangle[0], triangle[1], triangle[2], RED);
 const cullTriangles = (meshes, worldVertices, renderedCamera) => {
   return meshes.filter((mesh) => {
     let triangle = {
@@ -691,31 +663,31 @@ const render = () => {
     culledMesh.forEach((mesh) => {
       fillTriangleShaded(
         {
-          p0: viewPortToCanvas({
+          point: viewPortToCanvas({
             x: projectedVertices[mesh.vertices[0]].x,
             y: projectedVertices[mesh.vertices[0]].y,
             z: projectedVertices[mesh.vertices[0]].z,
           }),
-          worldP0: worldVertices[mesh.vertices[0]],
-          p0Normal: mesh.normals[0],
+          world: worldVertices[mesh.vertices[0]],
+          normal: mesh.normals[0],
         },
         {
-          p1: viewPortToCanvas({
+          point: viewPortToCanvas({
             x: projectedVertices[mesh.vertices[1]].x,
             y: projectedVertices[mesh.vertices[1]].y,
             z: projectedVertices[mesh.vertices[1]].z,
           }),
-          worldP1: worldVertices[mesh.vertices[1]],
-          p1Normal: mesh.normals[1],
+          world: worldVertices[mesh.vertices[1]],
+          normal: mesh.normals[1],
         },
         {
-          p2: viewPortToCanvas({
+          point: viewPortToCanvas({
             x: projectedVertices[mesh.vertices[2]].x,
             y: projectedVertices[mesh.vertices[2]].y,
             z: projectedVertices[mesh.vertices[2]].z,
           }),
-          worldP2: worldVertices[mesh.vertices[2]],
-          p2Normal: mesh.normals[2],
+          world: worldVertices[mesh.vertices[2]],
+          normal: mesh.normals[2],
         },
         mesh.color,
         lights
