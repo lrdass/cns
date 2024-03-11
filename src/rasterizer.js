@@ -241,58 +241,102 @@ const calculateLightIntensityForEachVertex = (
   let pointList = [p0, p1, p2];
   let originalPoints = [op0, op1, op2];
 
-  let pointIntensity = [];
-  /*
-   * TODO:
-   * This is computing lighting wrong. It is summing light from all three vertices all-together.
-   * This should instead calculate the lighting for a given point, and a given normal.
-   * */
-  for (let i = 0; i < 3; i++) {
-    let currentPoint = pointList[i];
-    lights.forEach((light) => {
-      if (light.type === "POINT") {
-        const cameraOrientation = camera.orientation;
-        const cameraPosition = camera.position;
-        const cameraMatrix = cameraOrientation
-          .Transpose()
-          .multM(new Matrix4().Translate(cameraPosition.prod(-1)));
-        const transformedLightPosition = cameraMatrix.multV(light.position);
-        vl = transformedLightPosition.sub(currentPoint);
-      } else if (light.type === "DIRECTIONAL") {
-        const cameraOrientation = camera.orientation;
-        const cameraMatrix = cameraOrientation.Transpose();
-        const transformedLightPosition = cameraMatrix.multV(light.direction);
-        vl = transformedLightPosition.sub(currentPoint);
-      }
-      const cos_alpha = vl.dot(normal) / (vl.magnitude() * normal.magnitude());
-      if (cos_alpha > 0) {
-        originalPoints[i].lightIntensity += light.intensity * cos_alpha;
-      }
-      // TODO: add reflective component
-    });
-    pointIntensity.push(originalPoints[i]);
+  const computePhong = () => {
+    return null;
   }
 
-  return pointIntensity;
+
+  return totalLight;
 };
 
-const fillTriangleShaded = (
-  { p0, worldP0, p0Normal },
-  { p1, worldP1, p1Normal },
-  { p2, worldP2, p2Normal },
-  color,
-  lights
-) => {
-  const lightIntensityPoints = calculateLightIntensityForEachVertex(
-    new Vector3f(worldP0.x, worldP0.y, worldP0.z),
-    new Vector3f(worldP1.x, worldP1.y, worldP1.z),
-    new Vector3f(worldP2.x, worldP2.y, worldP2.z),
-    p0,
-    p1,
-    p2,
-    p0Normal,
-    p1Normal,
-    p2Normal,
+const fillTriangleShadedPhong = (vertex0, vertex1, vertex2, color, lights) => {
+
+  [vertex0, vertex1, vertex2] = [vertex0, vertex1, vertex2].sort(
+    (v1, v2) => v1.point.y - v2.point.y
+  );
+
+
+  const p0 = vertex0.point;
+  const p1 = vertex1.point;
+  const p2 = vertex2.point;
+
+  // TODO: This could be refactored into a fcuntion call
+  const xCoordinatesForP1P2 = interpolate(p1.y, p2.y, p1.x, p2.x);
+  const xCoordinatesForP0P1 = interpolate(p0.y, p1.y, p0.x, p1.x);
+  const xCoordinatesForP0P2 = interpolate(p0.y, p2.y, p0.x, p2.x);
+
+  const zCoordinatesForP1P2 = interpolate(p1.y, p2.y, 1.0 / p1.z, 1.0 / p2.z);
+  const zCoordinatesForP0P1 = interpolate(p0.y, p1.y, 1.0 / p0.z, 1.0 / p1.z);
+  const zCoordinatesForP0P2 = interpolate(p0.y, p2.y, 1.0 / p0.z, 1.0 / p2.z);
+
+  // interpolate normals
+
+  xCoordinatesForP0P1.pop();
+  const xCoordinatesForSmallerSide = [
+    ...xCoordinatesForP0P1,
+    ...xCoordinatesForP1P2,
+  ];
+
+  zCoordinatesForP0P1.pop();
+  const zCoordinatesForSmallerSide = [
+    ...zCoordinatesForP0P1,
+    ...zCoordinatesForP1P2,
+  ];
+
+  const midIndex = (xCoordinatesForP0P2.length / 2) | 0;
+
+  let xLeft, xRight, zLeft, zRight, lightLeft, lightRight;
+  if (xCoordinatesForP0P2[midIndex] < xCoordinatesForSmallerSide[midIndex]) {
+    [xLeft, xRight] = [xCoordinatesForP0P2, xCoordinatesForSmallerSide];
+    [zLeft, zRight] = [zCoordinatesForP0P2, zCoordinatesForSmallerSide];
+  } else {
+    [xLeft, xRight] = [xCoordinatesForSmallerSide, xCoordinatesForP0P2];
+    [zLeft, zRight] = [zCoordinatesForSmallerSide, zCoordinatesForP0P2];
+  }
+
+  for (let y = p0.y; y <= p2.y; y++) {
+    let currentIndex = y - p0.y;
+
+    let [xFloor, xCeiling] = [
+      xLeft[currentIndex] | 0,
+      xRight[currentIndex] | 0,
+    ];
+
+    let [zl, zr] = [zLeft[currentIndex], zRight[currentIndex]];
+    let zScan = interpolate(xFloor, xCeiling, zl, zr);
+    let normals = interpolate (xFloor, xCeiling, leftNormal, rightNormal);
+
+
+    for (let x = xFloor; x <= xCeiling; x++) {
+      let currentZ = zScan[Math.floor(x - xFloor)];
+
+      const currentLight = computePhong(
+        x,
+        y,
+        currentZ,
+        normals[Math.floor(x - xFloor)]
+        lights,
+      );
+
+      // here it should compute L, Q vectors
+
+      if (zBufferAccess(x, y) <= currentZ) {
+        putPixel(x, y, multiplyColorScalar(color, currentLight));
+        zBufferWrite(x, y, currentZ);
+      }
+    }
+  }
+};
+
+const fillTriangleShaded = (vertex0, vertex1, vertex2, color, lights) => {
+  [vertex0, vertex1, vertex2] = [vertex0, vertex1, vertex2].sort(
+    (v1, v2) => v1.point.y - v2.point.y
+  );
+
+  const lightIntensityP0 = calculateLightIntensity(
+    vertex0.point,
+    vertex0.world,
+    vertex0.normal,
     lights
   );
   // lightIntensityPoints
@@ -379,7 +423,7 @@ const fillTriangleShaded = (
     for (let x = xFloor; x <= xCeiling; x++) {
       let currentZ = zScan[Math.floor(x - xFloor)];
       let currentLight = lightScan[Math.floor(x - xFloor)];
-      putPixel(x, y, multiplyColorScalar(color, currentLight));
+
       if (zBufferAccess(x, y) <= currentZ) {
         putPixel(x, y, multiplyColorScalar(color, currentLight));
         zBufferWrite(x, y, currentZ);
