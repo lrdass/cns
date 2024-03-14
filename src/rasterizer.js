@@ -1,4 +1,5 @@
 import { Matrix4, Vector3f } from "./math.js";
+import { generateSphere, cube, GREEN } from "./models.js";
 
 const canvas = document.getElementById("canvas");
 const context = canvas.getContext("2d");
@@ -7,6 +8,8 @@ const width = canvas.width;
 const height = canvas.height;
 
 const canvasBuffer = context.getImageData(0, 0, width, height);
+
+const RENDERING = "GOURAD";
 
 const blit = () => {
   context.putImageData(canvasBuffer, 0, 0);
@@ -75,13 +78,6 @@ const drawLine = (p0, p1, color) => {
   blit();
 };
 
-const RED = { r: 255, g: 0, b: 0, a: 255 };
-const BLUE = { r: 0, g: 0, b: 255, a: 255 };
-const GREEN = { r: 0, g: 255, b: 0, a: 255 };
-const YELLOW = { r: 225, g: 225, b: 0, a: 255 };
-const PINK = { r: 255, g: 0, b: 255, a: 255 };
-const CYAN = { r: 0, g: 255, b: 255, a: 255 };
-
 const interpolate = (i0, i1, d0, d1) => {
   if (i0 === i1) {
     return [d0];
@@ -125,60 +121,6 @@ const zBufferWrite = (x, y, value) => {
   zBuffer[offset] = value;
 };
 
-const fillTriangle = (p0, p1, p2, color) => {
-  [p0, p1, p2] = [p0, p1, p2].sort((point1, point2) => point1.y - point2.y);
-
-  const xCoordinatesForP1P2 = interpolate(p1.y, p2.y, p1.x, p2.x);
-  const xCoordinatesForP0P1 = interpolate(p0.y, p1.y, p0.x, p1.x);
-  const xCoordinatesForP0P2 = interpolate(p0.y, p2.y, p0.x, p2.x);
-
-  const zCoordinatesForP1P2 = interpolate(p1.y, p2.y, 1.0 / p1.z, 1.0 / p2.z);
-  const zCoordinatesForP0P1 = interpolate(p0.y, p1.y, 1.0 / p0.z, 1.0 / p1.z);
-  const zCoordinatesForP0P2 = interpolate(p0.y, p2.y, 1.0 / p0.z, 1.0 / p2.z);
-
-  xCoordinatesForP0P1.pop();
-  const xCoordinatesForSmallerSide = [
-    ...xCoordinatesForP0P1,
-    ...xCoordinatesForP1P2,
-  ];
-
-  zCoordinatesForP0P1.pop();
-  const zCoordinatesForSmallerSide = [
-    ...zCoordinatesForP0P1,
-    ...zCoordinatesForP1P2,
-  ];
-
-  const midIndex = Math.floor(xCoordinatesForP0P2.length / 2);
-
-  let xLeft, xRight, zLeft, zRight;
-  if (xCoordinatesForP0P2[midIndex] < xCoordinatesForSmallerSide[midIndex]) {
-    [xLeft, xRight] = [xCoordinatesForP0P2, xCoordinatesForSmallerSide];
-    [zLeft, zRight] = [zCoordinatesForP0P2, zCoordinatesForSmallerSide];
-  } else {
-    [xLeft, xRight] = [xCoordinatesForSmallerSide, xCoordinatesForP0P2];
-    [zLeft, zRight] = [zCoordinatesForSmallerSide, zCoordinatesForP0P2];
-  }
-
-  for (let y = p0.y; y <= p2.y; y++) {
-    let currentIndex = y - p0.y;
-
-    let [xFloor, xCeiling] = [xLeft[currentIndex], xRight[currentIndex]];
-
-    let [zl, zr] = [zLeft[currentIndex], zRight[currentIndex]];
-    let zScan = interpolate(xFloor, xCeiling, zl, zr);
-
-    // drawLine({ x: xFloor, y: y }, { x: xCeiling, y: y }, color)
-    for (let x = xFloor; x <= xCeiling; x++) {
-      let currentZ = zScan[x - xFloor];
-      putPixel(x, y, color);
-      if (zBufferAccess(x, y) <= currentZ) {
-        putPixel(x, y, color);
-        zBufferWrite(x, y, currentZ);
-      }
-    }
-  }
-};
-
 const clamp = (value, min, max) => {
   return Math.max(min, Math.min(max, value));
 };
@@ -209,92 +151,120 @@ let lights = [
   },
 ];
 
-const calculateLightIntensityForEachVertex = (
-  p0,
-  p1,
-  p2,
-  op0,
-  op1,
-  op2,
-  p0Normal,
-  p1Normal,
-  p2Normal,
-  lights
-) => {
-  op0.lightIntensity = 0;
-  op1.lightIntensity = 0;
-  op2.lightIntensity = 0;
+const calculateLightIntensity = (point, worldPoint, vertexNormal, lights) => {
+  let totalLight = 0;
+  let lightDirection;
 
-  /**
-   * TODO:
-   * This should be removed. Instead, the caculateLightIntensity should expect the normal at the given point.
-   * Then, it should calculate the lightIntesity for the vertex point.
-   *
-   */
-  let v = p1.sub(p0);
-  let w = p2.sub(p0);
+  lights.forEach((light) => {
+    if (light.type === "POINT") {
+      const cameraOrientation = camera.orientation;
+      const cameraPosition = camera.position;
+      const cameraMatrix = cameraOrientation
+        .Transpose()
+        .multM(new Matrix4().Translate(cameraPosition.prod(-1)));
+      const transformedLightPosition = cameraMatrix.multV(light.position);
+      lightDirection = transformedLightPosition.sub(worldPoint);
+    } else if (light.type === "DIRECTIONAL") {
+      const cameraOrientation = camera.orientation;
+      const cameraMatrix = cameraOrientation.Transpose();
+      const transformedLightPosition = cameraMatrix.multV(light.direction);
+      lightDirection = transformedLightPosition.sub(worldPoint);
+    } else {
+      totalLight += light.intensity;
+    }
 
-  const normal = v.cross(w);
+    const cos_alpha =
+      lightDirection.dot(vertexNormal) /
+      (lightDirection.magnitude() * vertexNormal.magnitude());
 
-  let vl;
+    if (cos_alpha > 0) {
+      totalLight += cos_alpha * light.intensity;
+    }
 
-  let pointList = [p0, p1, p2];
-  let originalPoints = [op0, op1, op2];
-
-  const computePhong = () => {
-    return null;
-  }
-
+    // TODO: add reflective component
+  });
 
   return totalLight;
 };
 
-const fillTriangleShadedPhong = (vertex0, vertex1, vertex2, color, lights) => {
+const isBiggerEdgeAtLeftSide = (x02, x12) => {
+  const midIndex = (x12.length / 2) | 0;
+  return x02[midIndex] < x12[midIndex];
+};
 
+const buildInterpolatedEdgeValues = (i0, i1, i2, d0, d1, d2) => {
+  const i12 = interpolate(i1, i2, d1, d2);
+  const i01 = interpolate(i0, i1, d0, d1);
+  const i02 = interpolate(i0, i2, d0, d2);
+
+  i01.pop();
+  const smaller = [...i01, ...i12];
+
+  return {
+    smallEdge: smaller,
+    bigEdge: i02,
+  };
+};
+
+const buildInterpolatedEdgeVectors = (...props) => {
+  console.log("not implemented!", props);
+};
+
+const vectorInterpolate = (...props) => {
+  console.log("not implemented!", props);
+};
+
+const fillTriangleShadedPhong = (vertex0, vertex1, vertex2, color, lights) => {
   [vertex0, vertex1, vertex2] = [vertex0, vertex1, vertex2].sort(
     (v1, v2) => v1.point.y - v2.point.y
   );
-
 
   const p0 = vertex0.point;
   const p1 = vertex1.point;
   const p2 = vertex2.point;
 
-  // TODO: This could be refactored into a fcuntion call
-  const xCoordinatesForP1P2 = interpolate(p1.y, p2.y, p1.x, p2.x);
-  const xCoordinatesForP0P1 = interpolate(p0.y, p1.y, p0.x, p1.x);
-  const xCoordinatesForP0P2 = interpolate(p0.y, p2.y, p0.x, p2.x);
+  const { bigEdge: x02, smallEdge: x12 } = buildInterpolatedEdgeValues(
+    p0.y,
+    p1.y,
+    p2.y,
+    p0.x,
+    p1.x,
+    p2.x
+  );
 
-  const zCoordinatesForP1P2 = interpolate(p1.y, p2.y, 1.0 / p1.z, 1.0 / p2.z);
-  const zCoordinatesForP0P1 = interpolate(p0.y, p1.y, 1.0 / p0.z, 1.0 / p1.z);
-  const zCoordinatesForP0P2 = interpolate(p0.y, p2.y, 1.0 / p0.z, 1.0 / p2.z);
+  const { bigEdge: z02, smallEdge: z12 } = buildInterpolatedEdgeValues(
+    p0.y,
+    p1.y,
+    p2.y,
+    1.0 / p0.z,
+    1.0 / p1.z,
+    1.0 / p2.z
+  );
 
-  // interpolate normals
+  const { bigEdge: v02, smallEdge: v12 } = buildInterpolatedEdgeVectors(
+    p0.y,
+    p1.y,
+    p2.y,
+    vertex0.normal,
+    vertex1.normal,
+    vertex2.normal
+  );
 
-  xCoordinatesForP0P1.pop();
-  const xCoordinatesForSmallerSide = [
-    ...xCoordinatesForP0P1,
-    ...xCoordinatesForP1P2,
-  ];
-
-  zCoordinatesForP0P1.pop();
-  const zCoordinatesForSmallerSide = [
-    ...zCoordinatesForP0P1,
-    ...zCoordinatesForP1P2,
-  ];
-
-  const midIndex = (xCoordinatesForP0P2.length / 2) | 0;
-
-  let xLeft, xRight, zLeft, zRight, lightLeft, lightRight;
-  if (xCoordinatesForP0P2[midIndex] < xCoordinatesForSmallerSide[midIndex]) {
-    [xLeft, xRight] = [xCoordinatesForP0P2, xCoordinatesForSmallerSide];
-    [zLeft, zRight] = [zCoordinatesForP0P2, zCoordinatesForSmallerSide];
+  // ordena os lados interpolados para iterar da esquerda para a direita
+  let xLeft, xRight, zLeft, zRight, vecLeft, vecRight;
+  if (isBiggerEdgeAtLeftSide(x02, x12)) {
+    [xLeft, xRight] = [x02, x12];
+    [zLeft, zRight] = [z02, z12];
+    [vecLeft, vecRight] = [v02, v12];
   } else {
-    [xLeft, xRight] = [xCoordinatesForSmallerSide, xCoordinatesForP0P2];
-    [zLeft, zRight] = [zCoordinatesForSmallerSide, zCoordinatesForP0P2];
+    [xLeft, xRight] = [x12, x02];
+    [zLeft, zRight] = [z12, z02];
+    [vecLeft, vecRight] = [v12, v02];
   }
 
+  // para cada linha entre p0 e p2
   for (let y = p0.y; y <= p2.y; y++) {
+    //  atual indice da linha
     let currentIndex = y - p0.y;
 
     let [xFloor, xCeiling] = [
@@ -302,23 +272,24 @@ const fillTriangleShadedPhong = (vertex0, vertex1, vertex2, color, lights) => {
       xRight[currentIndex] | 0,
     ];
 
-    let [zl, zr] = [zLeft[currentIndex], zRight[currentIndex]];
-    let zScan = interpolate(xFloor, xCeiling, zl, zr);
-    let normals = interpolate (xFloor, xCeiling, leftNormal, rightNormal);
+    let [vFloor, vCeiling] = [vecLeft[currentIndex], vecRight[currentIndex]];
 
+    let [zl, zr] = [zLeft[currentIndex], zRight[currentIndex]];
+
+    let zScan = interpolate(xFloor, xCeiling, zl, zr);
+    let vectorScan = vectorInterpolate(xFloor, xCeiling, vFloor, vCeiling);
 
     for (let x = xFloor; x <= xCeiling; x++) {
-      let currentZ = zScan[Math.floor(x - xFloor)];
+      const currentPixel = Math.floor(x - xFloor);
 
-      const currentLight = computePhong(
-        x,
-        y,
-        currentZ,
-        normals[Math.floor(x - xFloor)]
-        lights,
+      let currentZ = zScan[currentPixel];
+
+      let currentLight = calculateLightIntensity(
+        x, // calculate the xyz originaal position of the object
+        y, // calculate the xyz original position of the object
+        vectorScan[currentPixel],
+        lights
       );
-
-      // here it should compute L, Q vectors
 
       if (zBufferAccess(x, y) <= currentZ) {
         putPixel(x, y, multiplyColorScalar(color, currentLight));
@@ -339,90 +310,90 @@ const fillTriangleShaded = (vertex0, vertex1, vertex2, color, lights) => {
     vertex0.normal,
     lights
   );
-  // lightIntensityPoints
-
-  [p0, p1, p2] = lightIntensityPoints.sort(
-    (point1, point2) => point1.y - point2.y
+  const lightIntensityP1 = calculateLightIntensity(
+    vertex1.point,
+    vertex1.world,
+    vertex1.normal,
+    lights
+  );
+  const lightIntensityP2 = calculateLightIntensity(
+    vertex2.point,
+    vertex2.world,
+    vertex2.normal,
+    lights
   );
 
-  const xCoordinatesForP1P2 = interpolate(p1.y, p2.y, p1.x, p2.x);
-  const xCoordinatesForP0P1 = interpolate(p0.y, p1.y, p0.x, p1.x);
-  const xCoordinatesForP0P2 = interpolate(p0.y, p2.y, p0.x, p2.x);
+  const p0 = vertex0.point;
+  const p1 = vertex1.point;
+  const p2 = vertex2.point;
 
-  const zCoordinatesForP1P2 = interpolate(p1.y, p2.y, 1.0 / p1.z, 1.0 / p2.z);
-  const zCoordinatesForP0P1 = interpolate(p0.y, p1.y, 1.0 / p0.z, 1.0 / p1.z);
-  const zCoordinatesForP0P2 = interpolate(p0.y, p2.y, 1.0 / p0.z, 1.0 / p2.z);
-
-  const lightIntensityP1P2 = interpolate(
-    p1.y,
-    p2.y,
-    p1.lightIntensity,
-    p2.lightIntensity
-  );
-  const lightIntensityP0P1 = interpolate(
+  const { bigEdge: x02, smallEdge: x12 } = buildInterpolatedEdgeValues(
     p0.y,
     p1.y,
-    p0.lightIntensity,
-    p1.lightIntensity
-  );
-  const lightIntensityP0P2 = interpolate(
-    p0.y,
     p2.y,
-    p0.lightIntensity,
-    p2.lightIntensity
+    p0.x,
+    p1.x,
+    p2.x
   );
 
-  xCoordinatesForP0P1.pop();
-  const xCoordinatesForSmallerSide = [
-    ...xCoordinatesForP0P1,
-    ...xCoordinatesForP1P2,
-  ];
+  const { bigEdge: z02, smallEdge: z12 } = buildInterpolatedEdgeValues(
+    p0.y,
+    p1.y,
+    p2.y,
+    1.0 / p0.z,
+    1.0 / p1.z,
+    1.0 / p2.z
+  );
 
-  zCoordinatesForP0P1.pop();
-  const zCoordinatesForSmallerSide = [
-    ...zCoordinatesForP0P1,
-    ...zCoordinatesForP1P2,
-  ];
+  const { bigEdge: light02, smallEdge: light12 } = buildInterpolatedEdgeValues(
+    p0.y,
+    p1.y,
+    p2.y,
+    lightIntensityP0,
+    lightIntensityP1,
+    lightIntensityP2
+  );
 
-  lightIntensityP0P1.pop();
-  const lightIntensitySmallerSide = [
-    ...lightIntensityP0P1,
-    ...lightIntensityP1P2,
-  ];
-
-  const midIndex = (xCoordinatesForP0P2.length / 2) | 0;
-
+  // ordena os lados interpolados para iterar da esquerda para a direita
   let xLeft, xRight, zLeft, zRight, lightLeft, lightRight;
-  if (xCoordinatesForP0P2[midIndex] < xCoordinatesForSmallerSide[midIndex]) {
-    [xLeft, xRight] = [xCoordinatesForP0P2, xCoordinatesForSmallerSide];
-    [zLeft, zRight] = [zCoordinatesForP0P2, zCoordinatesForSmallerSide];
-    [lightLeft, lightRight] = [lightIntensityP0P2, lightIntensitySmallerSide];
+  if (isBiggerEdgeAtLeftSide(x02, x12)) {
+    [xLeft, xRight] = [x02, x12];
+    [zLeft, zRight] = [z02, z12];
+    [lightLeft, lightRight] = [light02, light12];
   } else {
-    [xLeft, xRight] = [xCoordinatesForSmallerSide, xCoordinatesForP0P2];
-    [zLeft, zRight] = [zCoordinatesForSmallerSide, zCoordinatesForP0P2];
-    [lightLeft, lightRight] = [lightIntensitySmallerSide, lightIntensityP0P2];
+    [xLeft, xRight] = [x12, x02];
+    [zLeft, zRight] = [z12, z02];
+    [lightLeft, lightRight] = [light12, light02];
   }
 
+  // para cada linha entre p0 e p2
   for (let y = p0.y; y <= p2.y; y++) {
+    //  atual indice da linha
     let currentIndex = y - p0.y;
+
+    // let {lineBegin: minX, lineEnd: maxY} = triangleEdgePointsByLineIndex()
+    // let {lineBegin: minLight, lineEnd: maxLight} = triangleEdgePointsByLineIndex()
 
     let [xFloor, xCeiling] = [
       xLeft[currentIndex] | 0,
       xRight[currentIndex] | 0,
     ];
+
     let [lightFloor, lightCeiling] = [
       lightLeft[currentIndex],
       lightRight[currentIndex],
     ];
 
     let [zl, zr] = [zLeft[currentIndex], zRight[currentIndex]];
-    let zScan = interpolate(xFloor, xCeiling, zl, zr);
 
+    let zScan = interpolate(xFloor, xCeiling, zl, zr);
     let lightScan = interpolate(xFloor, xCeiling, lightFloor, lightCeiling);
 
     for (let x = xFloor; x <= xCeiling; x++) {
-      let currentZ = zScan[Math.floor(x - xFloor)];
-      let currentLight = lightScan[Math.floor(x - xFloor)];
+      const currentPixel = Math.floor(x - xFloor);
+
+      let currentZ = zScan[currentPixel];
+      let currentLight = lightScan[currentPixel];
 
       if (zBufferAccess(x, y) <= currentZ) {
         putPixel(x, y, multiplyColorScalar(color, currentLight));
@@ -432,7 +403,6 @@ const fillTriangleShaded = (vertex0, vertex1, vertex2, color, lights) => {
   }
 };
 
-// fillTriangle(triangle[0], triangle[1], triangle[2], RED);
 const cullTriangles = (meshes, worldVertices, renderedCamera) => {
   return meshes.filter((mesh) => {
     let triangle = {
@@ -468,11 +438,13 @@ const cullTriangles = (meshes, worldVertices, renderedCamera) => {
   });
 };
 
+/*
 const drawTriangle = (p1, p2, p3, color) => {
   drawLine(p1, p2, color);
   drawLine(p2, p3, color);
   drawLine(p3, p1, color);
 };
+ */
 
 const PLANE_DISTANCE = 1;
 const PLANE_WIDTH = 1;
@@ -492,213 +464,27 @@ const viewPortToCanvas = ({ x, y, z }) => {
  * Also, it should create a sphere so gourad for spheres with proper normals could be properly rendered
  */
 
-const generateSphere = (divs, color) => {
-  let vertices = [];
-  let meshes = [];
-
-  let delta_angle = (2.0 * Math.PI) / divs;
-
-  // Generate vertices and normals.
-  for (let d = 0; d < divs + 1; d++) {
-    let y = (2.0 / divs) * (d - divs / 2);
-    let radius = Math.sqrt(1.0 - y * y);
-    for (let i = 0; i < divs; i++) {
-      const vertex = new Vector3f(
-        radius * Math.cos(i * delta_angle),
-        y,
-        radius * Math.sin(i * delta_angle)
-      );
-      vertices.push(vertex);
-    }
-  }
-
-  // Generate triangles.
-  for (let d = 0; d < divs; d++) {
-    for (let i = 0; i < divs; i++) {
-      let i0 = d * divs + i;
-      let i1 = (d + 1) * divs + ((i + 1) % divs);
-      let i2 = divs * d + ((i + 1) % divs);
-      let tri0 = [i0, i1, i2];
-      let tri1 = [i0, i0 + divs, i1];
-
-      meshes.push({
-        vertices: tri0,
-        normals: [vertices[tri0[0]], vertices[tri0[1]], vertices[tri0[2]]],
-        color,
-      });
-
-      meshes.push({
-        vertices: tri1,
-        normals: [vertices[tri1[0]], vertices[tri1[1]], vertices[tri1[2]]],
-        color,
-      });
-    }
-  }
-
-  return {
-    vertices,
-    meshes,
-  };
-};
-
-const cube = {
-  vertices: [
-    { x: -1, y: 1, z: -1 }, // a  0
-    { x: 1, y: 1, z: -1 }, // b  1
-    { x: 1, y: -1, z: -1 }, // c  2
-    { x: -1, y: -1, z: -1 }, // d 3
-    { x: -1, y: 1, z: 1 }, // e 4
-    { x: 1, y: 1, z: 1 }, // f   5
-    { x: 1, y: -1, z: 1 }, // g   6
-    { x: -1, y: -1, z: 1 }, //h   7
-  ],
-  meshes: [
-    {
-      // abd
-      vertices: [0, 1, 3],
-      color: CYAN,
-      normals: [
-        new Vector3f(0, 0, -1),
-        new Vector3f(0, 0, -1),
-        new Vector3f(0, 0, -1),
-      ],
-    },
-    {
-      //bcd
-      vertices: [1, 2, 3],
-      color: CYAN,
-      normals: [
-        new Vector3f(0, 0, -1),
-        new Vector3f(0, 0, -1),
-        new Vector3f(0, 0, -1),
-      ],
-    },
-    {
-      //bgc
-      vertices: [1, 6, 2],
-      color: PINK,
-      normals: [
-        new Vector3f(1, 0, 0),
-        new Vector3f(1, 0, 0),
-        new Vector3f(1, 0, 0),
-      ],
-    },
-    {
-      //bfg
-      vertices: [1, 5, 6],
-      color: PINK,
-      normals: [
-        new Vector3f(1, 0, 0),
-        new Vector3f(1, 0, 0),
-        new Vector3f(1, 0, 0),
-      ],
-    },
-    {
-      // eah
-      vertices: [4, 0, 7],
-      color: GREEN,
-      normals: [
-        new Vector3f(-1, 0, 0),
-        new Vector3f(-1, 0, 0),
-        new Vector3f(-1, 0, 0),
-      ],
-    },
-    {
-      // adh
-      vertices: [0, 3, 7],
-      color: GREEN,
-      normals: [
-        new Vector3f(-1, 0, 0),
-        new Vector3f(-1, 0, 0),
-        new Vector3f(-1, 0, 0),
-      ],
-    },
-    {
-      // dch
-      vertices: [3, 2, 7],
-      color: YELLOW,
-      normals: [
-        new Vector3f(0, -1, 0),
-        new Vector3f(0, -1, 0),
-        new Vector3f(0, -1, 0),
-      ],
-    },
-    {
-      // hcg
-      vertices: [7, 2, 6],
-      color: YELLOW,
-      normals: [
-        new Vector3f(0, -1, 0),
-        new Vector3f(0, -1, 0),
-        new Vector3f(0, -1, 0),
-      ],
-    },
-    {
-      // aeb
-      vertices: [0, 4, 1],
-      color: RED,
-      normals: [
-        new Vector3f(0, 1, 0),
-        new Vector3f(0, 1, 0),
-        new Vector3f(0, 1, 0),
-      ],
-    },
-    {
-      // efb
-      vertices: [0, 4, 1],
-      color: RED,
-      normals: [
-        new Vector3f(0, 1, 0),
-        new Vector3f(0, 1, 0),
-        new Vector3f(0, 1, 0),
-      ],
-    },
-    {
-      // feh
-      vertices: [5, 4, 7],
-      color: BLUE,
-      normals: [
-        new Vector3f(0, 0, 1),
-        new Vector3f(0, 0, 1),
-        new Vector3f(0, 0, 1),
-      ],
-    },
-    {
-      // fhg
-      vertices: [5, 7, 6],
-      color: BLUE,
-      normals: [
-        new Vector3f(0, 0, 1),
-        new Vector3f(0, 0, 1),
-        new Vector3f(0, 0, 1),
-      ],
-    },
-  ],
-};
-
 const sphere = generateSphere(16, GREEN);
 
 const instance = {
   model: sphere,
   transform: {
-    position: new Vector3f(0, 0, 3),
+    position: new Vector3f(0, 0, 6),
     scale: new Vector3f(1, 1, 1),
     rotation: new Vector3f(0, 1, 0),
   },
 };
 
-/*
 const instance2 = {
   model: cube,
   transform: {
-    position: new Vector3f(-1, -2, 6),
+    position: new Vector3f(-1, -1, 4),
     scale: new Vector3f(0.5, 0.5, 0.5),
-    rotation: new Vector3f(0, 2.1, 0),
+    rotation: new Vector3f(0, 2.5, 0),
   },
 };
-*/
 
-let sceneInstances = [instance];
+let sceneInstances = [instance2, instance];
 
 let camera = {
   position: new Vector3f(0, 0, 0),
@@ -733,37 +519,71 @@ const render = () => {
     const culledMesh = cullTriangles(meshes, worldVertices, camera.position);
 
     culledMesh.forEach((mesh) => {
-      fillTriangleShaded(
-        {
-          p0: viewPortToCanvas({
-            x: projectedVertices[mesh.vertices[0]].x,
-            y: projectedVertices[mesh.vertices[0]].y,
-            z: projectedVertices[mesh.vertices[0]].z,
-          }),
-          worldP0: worldVertices[mesh.vertices[0]],
-          p0Normal: mesh.normals[0],
-        },
-        {
-          p1: viewPortToCanvas({
-            x: projectedVertices[mesh.vertices[1]].x,
-            y: projectedVertices[mesh.vertices[1]].y,
-            z: projectedVertices[mesh.vertices[1]].z,
-          }),
-          worldP1: worldVertices[mesh.vertices[1]],
-          p1Normal: mesh.normals[1],
-        },
-        {
-          p2: viewPortToCanvas({
-            x: projectedVertices[mesh.vertices[2]].x,
-            y: projectedVertices[mesh.vertices[2]].y,
-            z: projectedVertices[mesh.vertices[2]].z,
-          }),
-          worldP2: worldVertices[mesh.vertices[2]],
-          p2Normal: mesh.normals[2],
-        },
-        mesh.color,
-        lights
-      );
+      if (RENDERING === "PHONG") {
+        fillTriangleShadedPhong(
+          {
+            point: viewPortToCanvas({
+              x: projectedVertices[mesh.vertices[0]].x,
+              y: projectedVertices[mesh.vertices[0]].y,
+              z: projectedVertices[mesh.vertices[0]].z,
+            }),
+            world: worldVertices[mesh.vertices[0]],
+            normal: mesh.normals[0],
+          },
+          {
+            point: viewPortToCanvas({
+              x: projectedVertices[mesh.vertices[1]].x,
+              y: projectedVertices[mesh.vertices[1]].y,
+              z: projectedVertices[mesh.vertices[1]].z,
+            }),
+            world: worldVertices[mesh.vertices[1]],
+            normal: mesh.normals[1],
+          },
+          {
+            point: viewPortToCanvas({
+              x: projectedVertices[mesh.vertices[2]].x,
+              y: projectedVertices[mesh.vertices[2]].y,
+              z: projectedVertices[mesh.vertices[2]].z,
+            }),
+            world: worldVertices[mesh.vertices[2]],
+            normal: mesh.normals[2],
+          },
+          mesh.color,
+          lights
+        );
+      } else {
+        fillTriangleShaded(
+          {
+            point: viewPortToCanvas({
+              x: projectedVertices[mesh.vertices[0]].x,
+              y: projectedVertices[mesh.vertices[0]].y,
+              z: projectedVertices[mesh.vertices[0]].z,
+            }),
+            world: worldVertices[mesh.vertices[0]],
+            normal: mesh.normals[0],
+          },
+          {
+            point: viewPortToCanvas({
+              x: projectedVertices[mesh.vertices[1]].x,
+              y: projectedVertices[mesh.vertices[1]].y,
+              z: projectedVertices[mesh.vertices[1]].z,
+            }),
+            world: worldVertices[mesh.vertices[1]],
+            normal: mesh.normals[1],
+          },
+          {
+            point: viewPortToCanvas({
+              x: projectedVertices[mesh.vertices[2]].x,
+              y: projectedVertices[mesh.vertices[2]].y,
+              z: projectedVertices[mesh.vertices[2]].z,
+            }),
+            world: worldVertices[mesh.vertices[2]],
+            normal: mesh.normals[2],
+          },
+          mesh.color,
+          lights
+        );
+      }
     });
   });
 };
