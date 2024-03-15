@@ -9,7 +9,7 @@ const height = canvas.height;
 
 const canvasBuffer = context.getImageData(0, 0, width, height);
 
-const RENDERING = "GOURAD";
+const RENDERING = "PHONG";
 
 const blit = () => {
   context.putImageData(canvasBuffer, 0, 0);
@@ -137,13 +137,13 @@ const multiplyColorScalar = (color, scalar) => {
 let lights = [
   {
     type: "POINT",
-    position: new Vector3f(-3, 2, -10),
-    intensity: 0.9,
+    position: new Vector3f(80, 2, -10),
+    intensity: 0.1,
   },
   {
     type: "DIRECTIONAL",
-    intensity: 0.1,
-    direction: new Vector3f(0, 0, 1),
+    intensity: 0.2,
+    direction: new Vector3f(3, 0, 1),
   },
   {
     type: "AMBIENT",
@@ -177,8 +177,18 @@ const calculateLightIntensity = (point, worldPoint, vertexNormal, lights) => {
       lightDirection.dot(vertexNormal) /
       (lightDirection.magnitude() * vertexNormal.magnitude());
 
+    const reflective = vertexNormal
+      .prod(2 * vertexNormal.dot(lightDirection))
+      .sub(lightDirection);
+
+    const reflectiveFactor = Math.pow(
+      reflective.dot(vertexNormal) /
+        (reflective.magnitude() * vertexNormal.magnitude()),
+      1000
+    );
+
     if (cos_alpha > 0) {
-      totalLight += cos_alpha * light.intensity;
+      totalLight += (cos_alpha + reflectiveFactor) * light.intensity;
     }
 
     // TODO: add reflective component
@@ -206,12 +216,32 @@ const buildInterpolatedEdgeValues = (i0, i1, i2, d0, d1, d2) => {
   };
 };
 
-const buildInterpolatedEdgeVectors = (...props) => {
-  console.log("not implemented!", props);
+const interpolateVector = (i0, i1, v0, v1) => {
+  const v01x = interpolate(i0, i1, v0.x, v1.x);
+  const v01y = interpolate(i0, i1, v0.y, v1.y);
+  const v01z = interpolate(i0, i1, v0.z, v1.z);
+
+  let resultVectors = [];
+
+  for (let i = 0; i < v01x.length; i++) {
+    resultVectors.push(new Vector3f(v01x[i], v01y[i], v01z[i]));
+  }
+
+  return resultVectors;
 };
 
-const vectorInterpolate = (...props) => {
-  console.log("not implemented!", props);
+const buildInterpolatedEdgeVectors = (i0, i1, i2, v0, v1, v2) => {
+  const v12 = interpolateVector(i1, i2, v1, v2);
+  const v01 = interpolateVector(i0, i1, v0, v1);
+  const v02 = interpolateVector(i0, i2, v0, v2);
+
+  v01.pop();
+  const smaller = [...v01, ...v12];
+
+  return {
+    smallEdge: smaller,
+    bigEdge: v02,
+  };
 };
 
 const fillTriangleShadedPhong = (vertex0, vertex1, vertex2, color, lights) => {
@@ -277,16 +307,25 @@ const fillTriangleShadedPhong = (vertex0, vertex1, vertex2, color, lights) => {
     let [zl, zr] = [zLeft[currentIndex], zRight[currentIndex]];
 
     let zScan = interpolate(xFloor, xCeiling, zl, zr);
-    let vectorScan = vectorInterpolate(xFloor, xCeiling, vFloor, vCeiling);
+    let vectorScan = interpolateVector(xFloor, xCeiling, vFloor, vCeiling);
 
     for (let x = xFloor; x <= xCeiling; x++) {
       const currentPixel = Math.floor(x - xFloor);
 
       let currentZ = zScan[currentPixel];
 
+      let oz = 1.0 / currentZ;
+
+      const objX = (x * oz) / PLANE_DISTANCE;
+      const objY = (y * oz) / PLANE_DISTANCE;
+      const objZ = 1.0 / currentZ;
+
+      const rx = (objX * PLANE_WIDTH) / width;
+      const ry = (objY * PLANE_HEIGHT) / height;
+
       let currentLight = calculateLightIntensity(
-        x, // calculate the xyz originaal position of the object
-        y, // calculate the xyz original position of the object
+        new Vector3f(rx, ry, oz),
+        new Vector3f(rx, ry, oz),
         vectorScan[currentPixel],
         lights
       );
@@ -469,22 +508,22 @@ const sphere = generateSphere(16, GREEN);
 const instance = {
   model: sphere,
   transform: {
-    position: new Vector3f(0, 0, 6),
+    position: new Vector3f(1.75, 0, 7),
     scale: new Vector3f(1, 1, 1),
     rotation: new Vector3f(0, 1, 0),
   },
 };
 
-const instance2 = {
-  model: cube,
-  transform: {
-    position: new Vector3f(-1, -1, 4),
-    scale: new Vector3f(0.5, 0.5, 0.5),
-    rotation: new Vector3f(0, 2.5, 0),
-  },
-};
+// const instance2 = {
+//   model: cube,
+//   transform: {
+//     position: new Vector3f(-1, -1, 4),
+//     scale: new Vector3f(0.5, 0.5, 0.5),
+//     rotation: new Vector3f(0, 2.5, 0),
+//   },
+// };
 
-let sceneInstances = [instance2, instance];
+let sceneInstances = [instance];
 
 let camera = {
   position: new Vector3f(0, 0, 0),
