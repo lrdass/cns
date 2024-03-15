@@ -12,7 +12,7 @@ Atualmente implementado:
 - [x] Projecao > Viewport > Canvas pipeline
 - [x] Flat-shading 
 - [x] Gourad shading
-- [ ] Phong (sendo desenvolvido atualmente) 
+- [x] Phong shading
 - [ ] Mapeamento de texturas
 
 O objetivo deste repositorio é com fins didaticos, futuras melhorias vao incluir:
@@ -30,6 +30,7 @@ A intenção é ir do 0 à uma ferramenta capaz de criar jogos simples, sem anim
 
 <img width="582" alt="Captura de Tela 2024-03-08 às 23 52 57" src="https://github.com/lrdass/cns/assets/66750963/3810e0dd-fcee-4f34-bd5f-cdf6bf53f588">
 <img width="470" alt="Captura de Tela 2024-03-10 às 09 21 12" src="https://github.com/lrdass/cns/assets/66750963/7ef55a5a-f20b-4fd2-ae00-2eba10d4a49f">
+![image](https://github.com/lrdass/cns/assets/66750963/d22a6be2-978c-4ff3-b79a-9c222786debe)
 
 
 # Como rodar:
