@@ -7,6 +7,45 @@ const YELLOW = { r: 225, g: 225, b: 0, a: 255 };
 const PINK = { r: 255, g: 0, b: 255, a: 255 };
 const CYAN = { r: 0, g: 255, b: 255, a: 255 };
 
+const Texture = function (url) {
+  if(!(this instanceof Texture)){
+    return new Texture(url)
+  }
+  this.image = new Image();
+  this.image.src = url;
+
+  this.image.onload = () => {
+    this.canvas = document.createElement("canvas");
+
+    this.tw = this.image.width;
+    this.th = this.image.height;
+
+    this.ctx = this.canvas.getContext("2d");
+
+    this.ctx.drawImage(this.image, 0, 0, this.image.width, this.image.height);
+    this.data = this.ctx.getImageData(0, 0, this.image.width, this.image.height);
+
+  }
+
+}
+
+Texture.prototype.getTexel = function (u, v) {
+  if (this.canvas) {
+    let x = Math.floor(u * this.tw);
+    let y = Math.floor(v * this.th);
+    let index = (y * this.tw + x) * 4;
+    return {
+      r: this.data.data[index],
+      g: this.data.data[index + 1],
+      b: this.data.data[index + 2],
+      a: this.data.data[index + 3],
+    };
+  }
+}
+
+const woodCrate = Texture("../assets/woodCrate.jpg")
+console.log(woodCrate)
+
 const generateSphere = (divs, color) => {
   let vertices = [];
   let meshes = [];
@@ -77,6 +116,7 @@ const cube = {
         new Vector3f(0, 0, -1),
         new Vector3f(0, 0, -1),
       ],
+      texture: woodCrate,
     },
     {
       //bcd
@@ -87,6 +127,7 @@ const cube = {
         new Vector3f(0, 0, -1),
         new Vector3f(0, 0, -1),
       ],
+      texture: woodCrate,
     },
     {
       //bgc
@@ -97,6 +138,7 @@ const cube = {
         new Vector3f(1, 0, 0),
         new Vector3f(1, 0, 0),
       ],
+      texture: woodCrate,
     },
     {
       //bfg
@@ -107,6 +149,7 @@ const cube = {
         new Vector3f(1, 0, 0),
         new Vector3f(1, 0, 0),
       ],
+      texture: woodCrate,
     },
     {
       // eah
@@ -117,6 +160,7 @@ const cube = {
         new Vector3f(-1, 0, 0),
         new Vector3f(-1, 0, 0),
       ],
+      texture: woodCrate,
     },
     {
       // adh
@@ -127,6 +171,7 @@ const cube = {
         new Vector3f(-1, 0, 0),
         new Vector3f(-1, 0, 0),
       ],
+      texture: woodCrate,
     },
     {
       // dch
@@ -137,6 +182,7 @@ const cube = {
         new Vector3f(0, -1, 0),
         new Vector3f(0, -1, 0),
       ],
+      texture: woodCrate,
     },
     {
       // hcg
@@ -147,6 +193,7 @@ const cube = {
         new Vector3f(0, -1, 0),
         new Vector3f(0, -1, 0),
       ],
+      texture: woodCrate,
     },
     {
       // aeb
@@ -157,6 +204,7 @@ const cube = {
         new Vector3f(0, 1, 0),
         new Vector3f(0, 1, 0),
       ],
+      texture: woodCrate,
     },
     {
       // efb
@@ -167,6 +215,7 @@ const cube = {
         new Vector3f(0, 1, 0),
         new Vector3f(0, 1, 0),
       ],
+      texture: woodCrate,
     },
     {
       // feh
@@ -177,6 +226,7 @@ const cube = {
         new Vector3f(0, 0, 1),
         new Vector3f(0, 0, 1),
       ],
+      texture: woodCrate,
     },
     {
       // fhg
@@ -187,6 +237,7 @@ const cube = {
         new Vector3f(0, 0, 1),
         new Vector3f(0, 0, 1),
       ],
+      texture: woodCrate,
     },
   ],
 };

@@ -15,6 +15,7 @@ const blit = () => {
   context.putImageData(canvasBuffer, 0, 0);
 };
 
+
 const clear = () => {
   for (let i = 0; i < width * height * 4; i++) {
     canvasBuffer.data[i + 0] = 255;
@@ -503,10 +504,10 @@ const viewPortToCanvas = ({ x, y, z }) => {
  * Also, it should create a sphere so gourad for spheres with proper normals could be properly rendered
  */
 
-const sphere = generateSphere(16, GREEN);
+//const sphere = generateSphere(16, GREEN);
 
 const instance = {
-  model: sphere,
+  model: cube,
   transform: {
     position: new Vector3f(1.75, 0, 7),
     scale: new Vector3f(1, 1, 1),
