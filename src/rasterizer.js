@@ -339,7 +339,7 @@ const fillTriangleShadedPhong = (vertex0, vertex1, vertex2, color, lights) => {
   }
 };
 
-const fillTriangleShaded = (vertex0, vertex1, vertex2, color, lights) => {
+const fillTriangleShaded = (vertex0, vertex1, vertex2, texture, lights) => {
   [vertex0, vertex1, vertex2] = [vertex0, vertex1, vertex2].sort(
     (v1, v2) => v1.point.y - v2.point.y
   );
@@ -429,14 +429,23 @@ const fillTriangleShaded = (vertex0, vertex1, vertex2, color, lights) => {
     let zScan = interpolate(xFloor, xCeiling, zl, zr);
     let lightScan = interpolate(xFloor, xCeiling, lightFloor, lightCeiling);
 
+    let uTexture = interpolate(xFloor, xCeiling, 0, 1)
+    let vTexture = interpolate(p0.y, p2.y, 0, 1)
+
     for (let x = xFloor; x <= xCeiling; x++) {
       const currentPixel = Math.floor(x - xFloor);
 
       let currentZ = zScan[currentPixel];
       let currentLight = lightScan[currentPixel];
 
+      // textura u[0, 1] v[0, 1]
+      let u = uTexture[currentPixel];
+      let v = vTexture[currentIndex];
+
+      let pixelColor = texture.getTexel(u, v);
+
       if (zBufferAccess(x, y) <= currentZ) {
-        putPixel(x, y, multiplyColorScalar(color, currentLight));
+        putPixel(x, y, multiplyColorScalar(pixelColor, currentLight));
         zBufferWrite(x, y, currentZ);
       }
     }
@@ -620,7 +629,7 @@ const render = () => {
             world: worldVertices[mesh.vertices[2]],
             normal: mesh.normals[2],
           },
-          mesh.color,
+          mesh.texture,
           lights
         );
       }

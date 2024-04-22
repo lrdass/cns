@@ -117,6 +117,11 @@ const cube = {
         new Vector3f(0, 0, -1),
       ],
       texture: woodCrate,
+      textureCoords: [
+        [0, 0],
+        [1, 0],
+        [0, 1],
+      ]
     },
     {
       //bcd
@@ -128,6 +133,11 @@ const cube = {
         new Vector3f(0, 0, -1),
       ],
       texture: woodCrate,
+      textureCoords: [
+        [1, 0],
+        [1, 1],
+        [0, 1],
+      ]
     },
     {
       //bgc
@@ -139,6 +149,11 @@ const cube = {
         new Vector3f(1, 0, 0),
       ],
       texture: woodCrate,
+      textureCoords: [
+        [0, 0],
+        [1, 1],
+        [0, 1],
+      ]
     },
     {
       //bfg
@@ -150,6 +165,11 @@ const cube = {
         new Vector3f(1, 0, 0),
       ],
       texture: woodCrate,
+      textureCoords: [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+      ]
     },
     {
       // eah
@@ -161,6 +181,11 @@ const cube = {
         new Vector3f(-1, 0, 0),
       ],
       texture: woodCrate,
+      textureCoords: [
+        [0, 0],
+        [1, 0],
+        [0, 1],
+      ]
     },
     {
       // adh
@@ -172,6 +197,11 @@ const cube = {
         new Vector3f(-1, 0, 0),
       ],
       texture: woodCrate,
+      textureCoords: [
+        [1, 0],
+        [1, 1],
+        [0, 1],
+      ]
     },
     {
       // dch
@@ -183,6 +213,11 @@ const cube = {
         new Vector3f(0, -1, 0),
       ],
       texture: woodCrate,
+      textureCoords: [
+        [0, 0],
+        [1, 0],
+        [0, 1],
+      ]
     },
     {
       // hcg
@@ -194,6 +229,11 @@ const cube = {
         new Vector3f(0, -1, 0),
       ],
       texture: woodCrate,
+      textureCoords: [
+        [0, 1],
+        [1, 0],
+        [1, 1],
+      ]
     },
     {
       // aeb
@@ -205,6 +245,11 @@ const cube = {
         new Vector3f(0, 1, 0),
       ],
       texture: woodCrate,
+      textureCoords: [
+        [0, 1],
+        [0, 0],
+        [1, 1],
+      ]
     },
     {
       // efb
@@ -216,6 +261,11 @@ const cube = {
         new Vector3f(0, 1, 0),
       ],
       texture: woodCrate,
+      textureCoords: [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+      ]
     },
     {
       // feh
@@ -227,6 +277,11 @@ const cube = {
         new Vector3f(0, 0, 1),
       ],
       texture: woodCrate,
+      textureCoords: [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+      ]
     },
     {
       // fhg
@@ -238,6 +293,11 @@ const cube = {
         new Vector3f(0, 0, 1),
       ],
       texture: woodCrate,
+      textureCoords: [
+        [0, 0],
+        [1, 1],
+        [0, 1],
+      ]
     },
   ],
 };
