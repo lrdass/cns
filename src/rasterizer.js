@@ -1,5 +1,5 @@
 import { Matrix4, Vector3f } from "./math.js";
-import {   awaitTextures } from "./models.js";
+import {cube } from "./models.js";
 
 const canvas = document.getElementById("canvas");
 const context = canvas.getContext("2d");
@@ -131,7 +131,7 @@ const multiplyColorScalar = (color, scalar) => {
     r: clamp(color.r * scalar, 0, 255),
     g: clamp(color.g * scalar, 0, 255),
     b: clamp(color.b * scalar, 0, 255),
-    a: color.a,
+    a: 255,
   };
 };
 
@@ -400,7 +400,7 @@ const fillTriangleShaded = (vertex0, vertex1, vertex2, texture, textureCoords, l
     p2.y,
     textureCoords[0][0],
     textureCoords[1][0],
-    textureCoords[1][0],
+    textureCoords[2][0],
   )
 
   const {bigEdge: texV02, smallEdge: texV12} = buildInterpolatedEdgeValues(
@@ -409,7 +409,7 @@ const fillTriangleShaded = (vertex0, vertex1, vertex2, texture, textureCoords, l
     p2.y,
     textureCoords[0][1],
     textureCoords[1][1],
-    textureCoords[1][1],
+    textureCoords[2][1],
   )
 
   // ordena os lados interpolados para iterar da esquerda para a direita
@@ -417,8 +417,9 @@ const fillTriangleShaded = (vertex0, vertex1, vertex2, texture, textureCoords, l
   if (isBiggerEdgeAtLeftSide(x02, x12)) {
     [xLeft, xRight] = [x02, x12];
     [zLeft, zRight] = [z02, z12];
+    // light
     [lightLeft, lightRight] = [light02, light12];
-    [texULeft, texURight] = [texU02, texU12];
+    // uv coordinates
     [texULeft, texURight] = [texU02, texU12];
     [texVLeft, texVRight] = [texV02, texV12];
   } else {
@@ -535,207 +536,17 @@ const viewPortToCanvas = ({ x, y, z }) => {
  * Also, it should create a sphere so gourad for spheres with proper normals could be properly rendered
  */
 
-//const sphere = generateSphere(16, GREEN);
-let cube;
 
-const addTextureObj = (text) => ({
-  vertices: [
-    { x: -1, y: 1, z: -1 }, // a  0
-    { x: 1, y: 1, z: -1 }, // b  1
-    { x: 1, y: -1, z: -1 }, // c  2
-    { x: -1, y: -1, z: -1 }, // d 3
-    { x: -1, y: 1, z: 1 }, // e 4
-    { x: 1, y: 1, z: 1 }, // f   5
-    { x: 1, y: -1, z: 1 }, // g   6
-    { x: -1, y: -1, z: 1 }, //h   7
-  ],
-  meshes: [
+let sceneInstances= [
     {
-      // abd
-      vertices: [0, 1, 3],
-      normals: [
-        new Vector3f(0, 0, -1),
-        new Vector3f(0, 0, -1),
-        new Vector3f(0, 0, -1),
-      ],
-      texture: text,
-      textureCoords: [
-        [0, 0],
-        [1, 0],
-        [0, 1],
-      ]
-    },
-    {
-      //bcd
-      vertices: [1, 2, 3],
-      normals: [
-        new Vector3f(0, 0, -1),
-        new Vector3f(0, 0, -1),
-        new Vector3f(0, 0, -1),
-      ],
-      texture: text,
-      textureCoords: [
-        [1, 0],
-        [1, 1],
-        [0, 1],
-      ]
-    },
-    {
-      //bgc
-      vertices: [1, 6, 2],
-      normals: [
-        new Vector3f(1, 0, 0),
-        new Vector3f(1, 0, 0),
-        new Vector3f(1, 0, 0),
-      ],
-      texture: text,
-      textureCoords: [
-        [0, 0],
-        [1, 1],
-        [0, 1],
-      ]
-    },
-    {
-      //bfg
-      vertices: [1, 5, 6],
-      normals: [
-        new Vector3f(1, 0, 0),
-        new Vector3f(1, 0, 0),
-        new Vector3f(1, 0, 0),
-      ],
-      texture: text,
-      textureCoords: [
-        [0, 0],
-        [1, 0],
-        [1, 1],
-      ]
-    },
-    {
-      // eah
-      vertices: [4, 0, 7],
-      normals: [
-        new Vector3f(-1, 0, 0),
-        new Vector3f(-1, 0, 0),
-        new Vector3f(-1, 0, 0),
-      ],
-      texture: text,
-      textureCoords: [
-        [0, 0],
-        [1, 0],
-        [0, 1],
-      ]
-    },
-    {
-      // adh
-      vertices: [0, 3, 7],
-      normals: [
-        new Vector3f(-1, 0, 0),
-        new Vector3f(-1, 0, 0),
-        new Vector3f(-1, 0, 0),
-      ],
-      texture: text,
-      textureCoords: [
-        [1, 0],
-        [1, 1],
-        [0, 1],
-      ]
-    },
-    {
-      // dch
-      vertices: [3, 2, 7],
-      normals: [
-        new Vector3f(0, -1, 0),
-        new Vector3f(0, -1, 0),
-        new Vector3f(0, -1, 0),
-      ],
-      texture: text,
-      textureCoords: [
-        [0, 0],
-        [1, 0],
-        [0, 1],
-      ]
-    },
-    {
-      // hcg
-      vertices: [7, 2, 6],
-      normals: [
-        new Vector3f(0, -1, 0),
-        new Vector3f(0, -1, 0),
-        new Vector3f(0, -1, 0),
-      ],
-      texture: text,
-      textureCoords: [
-        [0, 1],
-        [1, 0],
-        [1, 1],
-      ]
-    },
-    {
-      // aeb
-      vertices: [0, 4, 1],
-      normals: [
-        new Vector3f(0, 1, 0),
-        new Vector3f(0, 1, 0),
-        new Vector3f(0, 1, 0),
-      ],
-      texture: text,
-      textureCoords: [
-        [0, 1],
-        [0, 0],
-        [1, 1],
-      ]
-    },
-    {
-      // efb
-      vertices: [4, 5, 1],
-      normals: [
-        new Vector3f(0, 1, 0),
-        new Vector3f(0, 1, 0),
-        new Vector3f(0, 1, 0),
-      ],
-      texture: text,
-      textureCoords: [
-        [0, 0],
-        [1, 0],
-        [1, 1],
-      ]
-    },
-    {
-      // feh
-      vertices: [5, 4, 7],
-      normals: [
-        new Vector3f(0, 0, 1),
-        new Vector3f(0, 0, 1),
-        new Vector3f(0, 0, 1),
-      ],
-      texture: text,
-      textureCoords: [
-        [0, 0],
-        [1, 0],
-        [1, 1],
-      ]
-    },
-    {
-      // fhg
-      vertices: [5, 7, 6],
-      normals: [
-        new Vector3f(0, 0, 1),
-        new Vector3f(0, 0, 1),
-        new Vector3f(0, 0, 1),
-      ],
-      texture: text,
-      textureCoords: [
-        [0, 0],
-        [1, 1],
-        [0, 1],
-      ]
-    },
-  ],
-})
-
-
-
-let sceneInstances= [];
+      model: cube,
+      transform: {
+        position: new Vector3f(1.75, 0, 7),
+        scale: new Vector3f(1, 1, 1),
+        rotation: new Vector3f(0, 1, 0),
+      },
+    }
+];
 
 let camera = {
   position: new Vector3f(0, 0, 0),
@@ -843,26 +654,6 @@ const render = () => {
 
 
 // current fix just to properly lo0ad textures
-const clearRender = (woodCrate) => {
-
-  cube = addTextureObj(woodCrate)
-  sceneInstances =[
-    {
-      model: cube,
-      transform: {
-        position: new Vector3f(1.75, 0, 7),
-        scale: new Vector3f(1, 1, 1),
-        rotation: new Vector3f(0, 1, 0),
-      },
-    }
-  ]
-
-  clear();
-  // This lets the browser clear the canvas before blocking to render the scene.
-  setTimeout(function(){
-    render();
-    blit();
-  }, 0);
-}
-
-awaitTextures(clearRender)
+clear();
+render();
+blit();
