@@ -1,5 +1,5 @@
 import { Matrix4, Vector3f } from "./math.js";
-import { generateSphere, cube, GREEN } from "./models.js";
+import {   awaitTextures } from "./models.js";
 
 const canvas = document.getElementById("canvas");
 const context = canvas.getContext("2d");
@@ -9,7 +9,7 @@ const height = canvas.height;
 
 const canvasBuffer = context.getImageData(0, 0, width, height);
 
-const RENDERING = "PHONG";
+const RENDERING = "GOURAD";
 
 const blit = () => {
   context.putImageData(canvasBuffer, 0, 0);
@@ -339,7 +339,7 @@ const fillTriangleShadedPhong = (vertex0, vertex1, vertex2, color, lights) => {
   }
 };
 
-const fillTriangleShaded = (vertex0, vertex1, vertex2, texture, lights) => {
+const fillTriangleShaded = (vertex0, vertex1, vertex2, texture, textureCoords, lights) => {
   [vertex0, vertex1, vertex2] = [vertex0, vertex1, vertex2].sort(
     (v1, v2) => v1.point.y - v2.point.y
   );
@@ -394,16 +394,41 @@ const fillTriangleShaded = (vertex0, vertex1, vertex2, texture, lights) => {
     lightIntensityP2
   );
 
+  const {bigEdge: texU02, smallEdge: texU12} = buildInterpolatedEdgeValues(
+    p0.y,
+    p1.y,
+    p2.y,
+    textureCoords[0][0],
+    textureCoords[1][0],
+    textureCoords[1][0],
+  )
+
+  const {bigEdge: texV02, smallEdge: texV12} = buildInterpolatedEdgeValues(
+    p0.y,
+    p1.y,
+    p2.y,
+    textureCoords[0][1],
+    textureCoords[1][1],
+    textureCoords[1][1],
+  )
+
   // ordena os lados interpolados para iterar da esquerda para a direita
-  let xLeft, xRight, zLeft, zRight, lightLeft, lightRight;
+  let xLeft, xRight, zLeft, zRight, lightLeft, lightRight, texULeft, texURight, texVLeft, texVRight;
   if (isBiggerEdgeAtLeftSide(x02, x12)) {
     [xLeft, xRight] = [x02, x12];
     [zLeft, zRight] = [z02, z12];
     [lightLeft, lightRight] = [light02, light12];
+    [texULeft, texURight] = [texU02, texU12];
+    [texULeft, texURight] = [texU02, texU12];
+    [texVLeft, texVRight] = [texV02, texV12];
   } else {
     [xLeft, xRight] = [x12, x02];
     [zLeft, zRight] = [z12, z02];
+    //light
     [lightLeft, lightRight] = [light12, light02];
+    // uv coordinates texture
+    [texULeft, texURight] = [ texU12, texU02];
+    [texVLeft, texVRight] = [ texV12, texV02,];
   }
 
   // para cada linha entre p0 e p2
@@ -425,12 +450,16 @@ const fillTriangleShaded = (vertex0, vertex1, vertex2, texture, lights) => {
     ];
 
     let [zl, zr] = [zLeft[currentIndex], zRight[currentIndex]];
+    // texture
+    let [ul, ur]  = [texULeft[currentIndex], texURight[currentIndex]]
+    let [vl, vr]  = [texVLeft[currentIndex], texVRight[currentIndex]]
 
     let zScan = interpolate(xFloor, xCeiling, zl, zr);
     let lightScan = interpolate(xFloor, xCeiling, lightFloor, lightCeiling);
 
-    let uTexture = interpolate(xFloor, xCeiling, 0, 1)
-    let vTexture = interpolate(p0.y, p2.y, 0, 1)
+
+    let uScan = interpolate(xFloor, xCeiling, ul, ur)
+    let vScan = interpolate(xFloor, xCeiling, vl, vr)
 
     for (let x = xFloor; x <= xCeiling; x++) {
       const currentPixel = Math.floor(x - xFloor);
@@ -439,10 +468,10 @@ const fillTriangleShaded = (vertex0, vertex1, vertex2, texture, lights) => {
       let currentLight = lightScan[currentPixel];
 
       // textura u[0, 1] v[0, 1]
-      let u = uTexture[currentPixel];
-      let v = vTexture[currentIndex];
+      let currentU = uScan[currentPixel]
+      let currentV = vScan[currentPixel]
 
-      let pixelColor = texture.getTexel(u, v);
+      let pixelColor = texture.getTexel(currentU, currentV);
 
       if (zBufferAccess(x, y) <= currentZ) {
         putPixel(x, y, multiplyColorScalar(pixelColor, currentLight));
@@ -487,13 +516,6 @@ const cullTriangles = (meshes, worldVertices, renderedCamera) => {
   });
 };
 
-/*
-const drawTriangle = (p1, p2, p3, color) => {
-  drawLine(p1, p2, color);
-  drawLine(p2, p3, color);
-  drawLine(p3, p1, color);
-};
- */
 
 const PLANE_DISTANCE = 1;
 const PLANE_WIDTH = 1;
@@ -514,26 +536,206 @@ const viewPortToCanvas = ({ x, y, z }) => {
  */
 
 //const sphere = generateSphere(16, GREEN);
+let cube;
 
-const instance = {
-  model: cube,
-  transform: {
-    position: new Vector3f(1.75, 0, 7),
-    scale: new Vector3f(1, 1, 1),
-    rotation: new Vector3f(0, 1, 0),
-  },
-};
+const addTextureObj = (text) => ({
+  vertices: [
+    { x: -1, y: 1, z: -1 }, // a  0
+    { x: 1, y: 1, z: -1 }, // b  1
+    { x: 1, y: -1, z: -1 }, // c  2
+    { x: -1, y: -1, z: -1 }, // d 3
+    { x: -1, y: 1, z: 1 }, // e 4
+    { x: 1, y: 1, z: 1 }, // f   5
+    { x: 1, y: -1, z: 1 }, // g   6
+    { x: -1, y: -1, z: 1 }, //h   7
+  ],
+  meshes: [
+    {
+      // abd
+      vertices: [0, 1, 3],
+      normals: [
+        new Vector3f(0, 0, -1),
+        new Vector3f(0, 0, -1),
+        new Vector3f(0, 0, -1),
+      ],
+      texture: text,
+      textureCoords: [
+        [0, 0],
+        [1, 0],
+        [0, 1],
+      ]
+    },
+    {
+      //bcd
+      vertices: [1, 2, 3],
+      normals: [
+        new Vector3f(0, 0, -1),
+        new Vector3f(0, 0, -1),
+        new Vector3f(0, 0, -1),
+      ],
+      texture: text,
+      textureCoords: [
+        [1, 0],
+        [1, 1],
+        [0, 1],
+      ]
+    },
+    {
+      //bgc
+      vertices: [1, 6, 2],
+      normals: [
+        new Vector3f(1, 0, 0),
+        new Vector3f(1, 0, 0),
+        new Vector3f(1, 0, 0),
+      ],
+      texture: text,
+      textureCoords: [
+        [0, 0],
+        [1, 1],
+        [0, 1],
+      ]
+    },
+    {
+      //bfg
+      vertices: [1, 5, 6],
+      normals: [
+        new Vector3f(1, 0, 0),
+        new Vector3f(1, 0, 0),
+        new Vector3f(1, 0, 0),
+      ],
+      texture: text,
+      textureCoords: [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+      ]
+    },
+    {
+      // eah
+      vertices: [4, 0, 7],
+      normals: [
+        new Vector3f(-1, 0, 0),
+        new Vector3f(-1, 0, 0),
+        new Vector3f(-1, 0, 0),
+      ],
+      texture: text,
+      textureCoords: [
+        [0, 0],
+        [1, 0],
+        [0, 1],
+      ]
+    },
+    {
+      // adh
+      vertices: [0, 3, 7],
+      normals: [
+        new Vector3f(-1, 0, 0),
+        new Vector3f(-1, 0, 0),
+        new Vector3f(-1, 0, 0),
+      ],
+      texture: text,
+      textureCoords: [
+        [1, 0],
+        [1, 1],
+        [0, 1],
+      ]
+    },
+    {
+      // dch
+      vertices: [3, 2, 7],
+      normals: [
+        new Vector3f(0, -1, 0),
+        new Vector3f(0, -1, 0),
+        new Vector3f(0, -1, 0),
+      ],
+      texture: text,
+      textureCoords: [
+        [0, 0],
+        [1, 0],
+        [0, 1],
+      ]
+    },
+    {
+      // hcg
+      vertices: [7, 2, 6],
+      normals: [
+        new Vector3f(0, -1, 0),
+        new Vector3f(0, -1, 0),
+        new Vector3f(0, -1, 0),
+      ],
+      texture: text,
+      textureCoords: [
+        [0, 1],
+        [1, 0],
+        [1, 1],
+      ]
+    },
+    {
+      // aeb
+      vertices: [0, 4, 1],
+      normals: [
+        new Vector3f(0, 1, 0),
+        new Vector3f(0, 1, 0),
+        new Vector3f(0, 1, 0),
+      ],
+      texture: text,
+      textureCoords: [
+        [0, 1],
+        [0, 0],
+        [1, 1],
+      ]
+    },
+    {
+      // efb
+      vertices: [4, 5, 1],
+      normals: [
+        new Vector3f(0, 1, 0),
+        new Vector3f(0, 1, 0),
+        new Vector3f(0, 1, 0),
+      ],
+      texture: text,
+      textureCoords: [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+      ]
+    },
+    {
+      // feh
+      vertices: [5, 4, 7],
+      normals: [
+        new Vector3f(0, 0, 1),
+        new Vector3f(0, 0, 1),
+        new Vector3f(0, 0, 1),
+      ],
+      texture: text,
+      textureCoords: [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+      ]
+    },
+    {
+      // fhg
+      vertices: [5, 7, 6],
+      normals: [
+        new Vector3f(0, 0, 1),
+        new Vector3f(0, 0, 1),
+        new Vector3f(0, 0, 1),
+      ],
+      texture: text,
+      textureCoords: [
+        [0, 0],
+        [1, 1],
+        [0, 1],
+      ]
+    },
+  ],
+})
 
-// const instance2 = {
-//   model: cube,
-//   transform: {
-//     position: new Vector3f(-1, -1, 4),
-//     scale: new Vector3f(0.5, 0.5, 0.5),
-//     rotation: new Vector3f(0, 2.5, 0),
-//   },
-// };
 
-let sceneInstances = [instance];
+
+let sceneInstances= [];
 
 let camera = {
   position: new Vector3f(0, 0, 0),
@@ -630,6 +832,7 @@ const render = () => {
             normal: mesh.normals[2],
           },
           mesh.texture,
+          mesh.textureCoords,
           lights
         );
       }
@@ -637,41 +840,29 @@ const render = () => {
   });
 };
 
-/*
-let i = 0;
-let last = null;
-let second = null;
-let rendered = 0;
-  const draw = (now) => {
-  if (!last) {
-    last = now;
-  }
 
-  if (now - second > 1000) {
-    rendered = 0;
-    second = now;
-  }
 
-  if (now - last > 30) {
-    clear();
+// current fix just to properly lo0ad textures
+const clearRender = (woodCrate) => {
+
+  cube = addTextureObj(woodCrate)
+  sceneInstances =[
+    {
+      model: cube,
+      transform: {
+        position: new Vector3f(1.75, 0, 7),
+        scale: new Vector3f(1, 1, 1),
+        rotation: new Vector3f(0, 1, 0),
+      },
+    }
+  ]
+
+  clear();
+  // This lets the browser clear the canvas before blocking to render the scene.
+  setTimeout(function(){
     render();
     blit();
+  }, 0);
+}
 
-    i += 0.01;
-    rendered += 1;
-
-    instance.transform.rotation = new Vector3f(0, i, 0);
-    instance2.transform.rotation = new Vector3f(0, -1.3 * i, 0);
-    last = now;
-  }
-
-  requestAnimationFrame(draw);
-};
-
-draw();
-
-*/
-
-clear();
-render();
-blit();
+awaitTextures(clearRender)
