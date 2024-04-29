@@ -339,7 +339,7 @@ const fillTriangleShadedPhong = (vertex0, vertex1, vertex2, color, lights) => {
   }
 };
 
-const fillTriangleShaded = (vertex0, vertex1, vertex2, texture, textureCoords, lights) => {
+const fillTriangleShaded = (vertex0, vertex1, vertex2, texture,  lights) => {
   [vertex0, vertex1, vertex2] = [vertex0, vertex1, vertex2].sort(
     (v1, v2) => v1.point.y - v2.point.y
   );
@@ -366,6 +366,10 @@ const fillTriangleShaded = (vertex0, vertex1, vertex2, texture, textureCoords, l
   const p0 = vertex0.point;
   const p1 = vertex1.point;
   const p2 = vertex2.point;
+
+  const textureUV0 = vertex0.textureCoodinates
+  const textureUV1 = vertex1.textureCoodinates
+  const textureUV2 = vertex2.textureCoodinates
 
   const { bigEdge: x02, smallEdge: x12 } = buildInterpolatedEdgeValues(
     p0.y,
@@ -398,18 +402,18 @@ const fillTriangleShaded = (vertex0, vertex1, vertex2, texture, textureCoords, l
     p0.y,
     p1.y,
     p2.y,
-    textureCoords[0][0],
-    textureCoords[1][0],
-    textureCoords[2][0],
+    textureUV0[0],
+    textureUV1[0],
+    textureUV2[0],
   )
 
   const {bigEdge: texV02, smallEdge: texV12} = buildInterpolatedEdgeValues(
     p0.y,
     p1.y,
     p2.y,
-    textureCoords[0][1],
-    textureCoords[1][1],
-    textureCoords[2][1],
+    textureUV0[1],
+    textureUV1[1],
+    textureUV2[1],
   )
 
   // ordena os lados interpolados para iterar da esquerda para a direita
@@ -471,6 +475,7 @@ const fillTriangleShaded = (vertex0, vertex1, vertex2, texture, textureCoords, l
       // textura u[0, 1] v[0, 1]
       let currentU = uScan[currentPixel]
       let currentV = vScan[currentPixel]
+
 
       let pixelColor = texture.getTexel(currentU, currentV);
 
@@ -623,6 +628,7 @@ const render = () => {
             }),
             world: worldVertices[mesh.vertices[0]],
             normal: mesh.normals[0],
+            textureCoodinates: mesh.textureCoords[0]
           },
           {
             point: viewPortToCanvas({
@@ -632,6 +638,7 @@ const render = () => {
             }),
             world: worldVertices[mesh.vertices[1]],
             normal: mesh.normals[1],
+            textureCoodinates: mesh.textureCoords[1]
           },
           {
             point: viewPortToCanvas({
@@ -641,9 +648,9 @@ const render = () => {
             }),
             world: worldVertices[mesh.vertices[2]],
             normal: mesh.normals[2],
+            textureCoodinates: mesh.textureCoords[2]
           },
           mesh.texture,
-          mesh.textureCoords,
           lights
         );
       }

@@ -64,8 +64,8 @@ Texture.prototype.getTexel = function(u, v) {
   };
 }
 
-let woodCrateLoad = await Texture('../assets/crate-texture.jpg').loadImage()
-const woodCrate = woodCrateLoad()
+let experimentTextureLoad = await Texture('../assets/texture-target.png').loadImage()
+const experimentTexture = experimentTextureLoad()
 
 const cube =  {
   vertices: [
@@ -88,11 +88,11 @@ const cube =  {
         new Vector3f(0, 0, -1),
         new Vector3f(0, 0, -1),
       ],
-      texture: woodCrate,
+      texture: experimentTexture,
       textureCoords: [
-        [0, 0],
-        [1, 0],
-        [0, 1],
+        [0, 0.333],
+        [0.25, 0.333],
+        [0, 0.666],
       ]
     },
     {
@@ -104,15 +104,15 @@ const cube =  {
         new Vector3f(0, 0, -1),
         new Vector3f(0, 0, -1),
       ],
-      texture: woodCrate,
+      texture: experimentTexture,
       textureCoords: [
-        [1, 0],
-        [1, 1],
-        [0, 1],
+        [0.25, 0.333],
+        [0.25, 0.666],
+        [0, 0.666],
       ]
     },
     {
-      //bgc
+      // bgc
       vertices: [1, 6, 2],
       color: PINK,
       normals: [
@@ -120,11 +120,11 @@ const cube =  {
         new Vector3f(1, 0, 0),
         new Vector3f(1, 0, 0),
       ],
-      texture: woodCrate,
+      texture: experimentTexture,
       textureCoords: [
-        [0, 0],
-        [1, 1],
-        [0, 1],
+        [0.25, 0.333],
+        [0.5, 0.666],
+        [0.25, 0.666],
       ]
     },
     {
@@ -136,142 +136,142 @@ const cube =  {
         new Vector3f(1, 0, 0),
         new Vector3f(1, 0, 0),
       ],
-      texture: woodCrate,
+      texture: experimentTexture,
       textureCoords: [
-        [0, 0],
-        [1, 0],
-        [1, 1],
+        [0.25, 0.333],
+        [0.5, 0.333],
+        [0.5, 0.666],
       ]
     },
-    {
-      // eah
-      vertices: [4, 0, 7],
-      color: GREEN,
-      normals: [
-        new Vector3f(-1, 0, 0),
-        new Vector3f(-1, 0, 0),
-        new Vector3f(-1, 0, 0),
-      ],
-      texture: woodCrate,
-      textureCoords: [
-        [0, 0],
-        [1, 0],
-        [0, 1],
-      ]
-    },
-    {
-      // adh
-      vertices: [0, 3, 7],
-      color: GREEN,
-      normals: [
-        new Vector3f(-1, 0, 0),
-        new Vector3f(-1, 0, 0),
-        new Vector3f(-1, 0, 0),
-      ],
-      texture: woodCrate,
-      textureCoords: [
-        [1, 0],
-        [1, 1],
-        [0, 1],
-      ]
-    },
-    {
-      // dch
-      vertices: [3, 2, 7],
-      color: YELLOW,
-      normals: [
-        new Vector3f(0, -1, 0),
-        new Vector3f(0, -1, 0),
-        new Vector3f(0, -1, 0),
-      ],
-      texture: woodCrate,
-      textureCoords: [
-        [0, 0],
-        [1, 0],
-        [0, 1],
-      ]
-    },
-    {
-      // hcg
-      vertices: [7, 2, 6],
-      color: YELLOW,
-      normals: [
-        new Vector3f(0, -1, 0),
-        new Vector3f(0, -1, 0),
-        new Vector3f(0, -1, 0),
-      ],
-      texture: woodCrate,
-      textureCoords: [
-        [0, 1],
-        [1, 0],
-        [1, 1],
-      ]
-    },
-    {
-      // aeb
-      vertices: [0, 4, 1],
-      color: RED,
-      normals: [
-        new Vector3f(0, 1, 0),
-        new Vector3f(0, 1, 0),
-        new Vector3f(0, 1, 0),
-      ],
-      texture: woodCrate,
-      textureCoords: [
-        [0, 1],
-        [0, 0],
-        [1, 1],
-      ]
-    },
-    {
-      // efb
-      vertices: [4, 5, 1],
-      color: RED,
-      normals: [
-        new Vector3f(0, 1, 0),
-        new Vector3f(0, 1, 0),
-        new Vector3f(0, 1, 0),
-      ],
-      texture: woodCrate,
-      textureCoords: [
-        [0, 0],
-        [1, 0],
-        [1, 1],
-      ]
-    },
-    {
-      // feh
-      vertices: [5, 4, 7],
-      color: BLUE,
-      normals: [
-        new Vector3f(0, 0, 1),
-        new Vector3f(0, 0, 1),
-        new Vector3f(0, 0, 1),
-      ],
-      texture: woodCrate,
-      textureCoords: [
-        [0, 0],
-        [1, 0],
-        [1, 1],
-      ]
-    },
-    {
-      // fhg
-      vertices: [5, 7, 6],
-      color: BLUE,
-      normals: [
-        new Vector3f(0, 0, 1),
-        new Vector3f(0, 0, 1),
-        new Vector3f(0, 0, 1),
-      ],
-      texture: woodCrate,
-      textureCoords: [
-        [0, 0],
-        [1, 1],
-        [0, 1],
-      ]
-    },
-  ],
+  //   {
+  //   //  eah
+  //     vertices: [4, 0, 7],
+  //     color: GREEN,
+  //     normals: [
+  //       new Vector3f(-1, 0, 0),
+  //       new Vector3f(-1, 0, 0),
+  //       new Vector3f(-1, 0, 0),
+  //     ],
+  //     texture: experimentTexture,
+  //     textureCoords: [
+  //       [0, 0],
+  //       [1, 0],
+  //       [0, 1],
+  //     ]
+  //   },
+  // //   {
+  //     // adh
+  //     vertices: [0, 3, 7],
+  //     color: GREEN,
+  //     normals: [
+  //       new Vector3f(-1, 0, 0),
+  //       new Vector3f(-1, 0, 0),
+  //       new Vector3f(-1, 0, 0),
+  //     ],
+  //     texture: experimentTexture,
+  //     textureCoords: [
+  //       [1, 0],
+  //       [1, 1],
+  //       [0, 1],
+  //     ]
+  //   },
+  //   {
+  //     // dch
+  //     vertices: [3, 2, 7],
+  //     color: YELLOW,
+  //     normals: [
+  //       new Vector3f(0, -1, 0),
+  //       new Vector3f(0, -1, 0),
+  //       new Vector3f(0, -1, 0),
+  //     ],
+  //     texture: experimentTexture,
+  //     textureCoords: [
+  //       [0, 0],
+  //       [1, 0],
+  //       [0, 1],
+  //     ]
+  //   },
+  //   {
+  //     // hcg
+  //     vertices: [7, 2, 6],
+  //     color: YELLOW,
+  //     normals: [
+  //       new Vector3f(0, -1, 0),
+  //       new Vector3f(0, -1, 0),
+  //       new Vector3f(0, -1, 0),
+  //     ],
+  //     texture: experimentTexture,
+  //     textureCoords: [
+  //       [0, 1],
+  //       [1, 0],
+  //       [1, 1],
+  //     ]
+  //   },
+  //   {
+  //     // aeb
+  //     vertices: [0, 4, 1],
+  //     color: RED,
+  //     normals: [
+  //       new Vector3f(0, 1, 0),
+  //       new Vector3f(0, 1, 0),
+  //       new Vector3f(0, 1, 0),
+  //     ],
+  //     texture: experimentTexture,
+  //     textureCoords: [
+  //       [0, 1],
+  //       [0, 0],
+  //       [1, 1],
+  //     ]
+  //   },
+  //   {
+  //     // efb
+  //     vertices: [4, 5, 1],
+  //     color: RED,
+  //     normals: [
+  //       new Vector3f(0, 1, 0),
+  //       new Vector3f(0, 1, 0),
+  //       new Vector3f(0, 1, 0),
+  //     ],
+  //     texture: experimentTexture,
+  //     textureCoords: [
+  //       [0, 0],
+  //       [1, 0],
+  //       [1, 1],
+  //     ]
+  //   },
+  //   {
+  //     // feh
+  //     vertices: [5, 4, 7],
+  //     color: BLUE,
+  //     normals: [
+  //       new Vector3f(0, 0, 1),
+  //       new Vector3f(0, 0, 1),
+  //       new Vector3f(0, 0, 1),
+  //     ],
+  //     texture: experimentTexture,
+  //     textureCoords: [
+  //       [0, 0],
+  //       [1, 0],
+  //       [1, 1],
+  //     ]
+  //   },
+  //   {
+  //     // fhg
+  //     vertices: [5, 7, 6],
+  //     color: BLUE,
+  //     normals: [
+  //       new Vector3f(0, 0, 1),
+  //       new Vector3f(0, 0, 1),
+  //       new Vector3f(0, 0, 1),
+  //     ],
+  //     texture: experimentTexture,
+  //     textureCoords: [
+  //       [0, 0],
+  //       [1, 1],
+  //       [0, 1],
+  //     ]
+  //   },
+   ],
 };
 
 const generateSphere = (divs, color) => {
