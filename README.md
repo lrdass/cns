@@ -13,7 +13,7 @@ Atualmente implementado:
 - [x] Flat-shading 
 - [x] Gourad shading
 - [x] Phong shading
-- [ ] Mapeamento de texturas
+- [x] Mapeamento de texturas
 
 O objetivo deste repositorio é com fins didaticos, futuras melhorias vao incluir:
 - [ ] Melhoramento da biblioteca de Algebra linear (usando closures)
