@@ -14,6 +14,9 @@ Atualmente implementado:
 - [x] Gourad shading
 - [x] Phong shading
 - [x] Mapeamento de texturas
+- [x] Bilinear filtering
+- [ ] Mipmapping
+- [ ] Stencil shadows 
 
 O objetivo deste repositorio é com fins didaticos, futuras melhorias vao incluir:
 - [ ] Melhoramento da biblioteca de Algebra linear (usando closures)
@@ -31,6 +34,10 @@ A intenção é ir do 0 à uma ferramenta capaz de criar jogos simples, sem anim
 <img width="582" alt="Captura de Tela 2024-03-08 às 23 52 57" src="https://github.com/lrdass/cns/assets/66750963/3810e0dd-fcee-4f34-bd5f-cdf6bf53f588">
 <img width="470" alt="Captura de Tela 2024-03-10 às 09 21 12" src="https://github.com/lrdass/cns/assets/66750963/7ef55a5a-f20b-4fd2-ae00-2eba10d4a49f">
 <img width="468" alt="Captura de Tela 2024-03-15 às 19 10 26" src="https://github.com/lrdass/cns/assets/66750963/e5460901-0b4a-46de-a5d8-ab58c053df0e">
+![image](https://github.com/lrdass/cns/assets/66750963/9fff1728-4439-43d4-ad3a-644c571e8744)
+
+
+
 
 # Como rodar:
 
