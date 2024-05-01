@@ -45,22 +45,74 @@ Texture.prototype.loadImage = function() {
       resolve(callback);
     });
 
+    // mip mapping:
+    //
+    // Nos vamos gerar N novos buffers:
+    // Em que em cada divisao, a posicao do buffer vai ser a media dos pixels ao redor
+    // Exemplo
+    // Uma textura metade do tamanho, cada texel vai ser arredondado para os 4 texels adjacentes
+
     image.src = this.url;
   });
 
 }
 
 Texture.prototype.getTexel = function(u, v) {
-  var iu = (u*this.iw) | 0;
-  var iv = (v*this.ih) | 0;
+  // bilinear filtering
+  // fx = frac(tx)
+  // fy = frac(ty)
+  // tx = floor(tx)
+  // ty = floor(ty)
 
-  var offset = (iv*this.iw*4 + iu*4);
 
+  // TL = texture[tx][ty]
+  // TR = texture[tx+1][ty]
+  // BL = texture[tx][ty+1]
+  // BR = texture[tx+1][ty+1]
+
+  // CT = fx * TR + (1 - fx) * TL
+  // CB = fx * BR + (1 - fx) * BL
+
+  // return fy * CB + (1 - fy) * CT
+
+  // var iu = (u*this.iw) | 0;
+  // var iv = (v*this.ih) | 0;
+
+  // var offset = (iv*this.iw*4 + iu*4);
+
+
+  let tx = (u*this.iw);
+  let ty = (v*this.ih);
+
+  const fx = tx - Math.floor(tx)
+  const fy = ty - Math.floor(ty)
+
+  tx = Math.floor(tx)
+  ty = Math.floor(ty)
+
+
+  const TLoffset = (ty*this.iw*4 + tx*4)
+  const TRoffset = (ty*this.iw*4 + (tx + 1)*4)
+  const BLoffset = ((ty + 1)*this.iw*4 + tx*4)
+  const BRoffset = ((ty + 1)*this.iw*4 + (tx + 1)*4)
+
+
+  const pixelTL = new Vector3f(this.pixelData[TLoffset + 0], this.pixelData[TLoffset + 1], this.pixelData[TLoffset + 2])
+  const pixelTR = new Vector3f(this.pixelData[TRoffset + 0], this.pixelData[TRoffset + 1], this.pixelData[TRoffset + 2])
+
+  const pixelBL = new Vector3f(this.pixelData[BLoffset + 0], this.pixelData[BLoffset + 1], this.pixelData[BLoffset + 2])
+  const pixelBR = new Vector3f(this.pixelData[BRoffset + 0], this.pixelData[BRoffset + 1], this.pixelData[BRoffset + 2])
+
+
+  const CT = pixelTR.prod(fx).add(pixelTL.prod(1 - fx))
+  const CB = pixelBR.prod(fx).add(pixelBL.prod(1 - fx))
+
+  const result = CB.prod(fy).add(CT.prod(1-fy))
 
   return {
-    r: this.pixelData[offset + 0],
-    g: this.pixelData[offset + 1],
-    b: this.pixelData[offset + 2]
+    r: result.x,
+    g: result.y,
+    b: result.z
   };
 }
 

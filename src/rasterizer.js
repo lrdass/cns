@@ -402,18 +402,18 @@ const fillTriangleShaded = (vertex0, vertex1, vertex2, texture,  lights) => {
     p0.y,
     p1.y,
     p2.y,
-    textureUV0[0],
-    textureUV1[0],
-    textureUV2[0],
+    textureUV0[0] / p0.z,
+    textureUV1[0] / p1.z,
+    textureUV2[0] / p2.z,
   )
 
   const {bigEdge: texV02, smallEdge: texV12} = buildInterpolatedEdgeValues(
     p0.y,
     p1.y,
     p2.y,
-    textureUV0[1],
-    textureUV1[1],
-    textureUV2[1],
+    textureUV0[1] / p0.z,
+    textureUV1[1] / p1.z,
+    textureUV2[1] / p2.z,
   )
 
   // ordena os lados interpolados para iterar da esquerda para a direita
@@ -477,7 +477,7 @@ const fillTriangleShaded = (vertex0, vertex1, vertex2, texture,  lights) => {
       let currentV = vScan[currentPixel]
 
 
-      let pixelColor = texture.getTexel(currentU, currentV);
+      let pixelColor = texture.getTexel(currentU / currentZ, currentV / currentZ);
 
       if (zBufferAccess(x, y) <= currentZ) {
         putPixel(x, y, multiplyColorScalar(pixelColor, currentLight));
@@ -546,7 +546,7 @@ let sceneInstances= [
     {
       model: cube,
       transform: {
-        position: new Vector3f(1.75, 0, 7),
+        position: new Vector3f(-1.75, 0, 8),
         scale: new Vector3f(1, 1, 1),
         rotation: new Vector3f(0, 1, 0),
       },
