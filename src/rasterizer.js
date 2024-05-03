@@ -470,6 +470,7 @@ const fillTriangleShaded = (vertex0, vertex1, vertex2, texture,  lights) => {
       const currentPixel = Math.floor(x - xFloor);
 
       let currentZ = zScan[currentPixel];
+      console.log('current z for this pixel', 1/currentZ)
       let currentLight = lightScan[currentPixel];
 
       // textura u[0, 1] v[0, 1]

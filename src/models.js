@@ -16,6 +16,46 @@ var Texture = function(url) {
 }
 
 Texture.prototype.loadImage = function() {
+
+  const buildMipMaps = (n) => {
+    this.mipMaps = []
+    let currentDivision = 1
+
+    // source canvas -> map onto dest canvas
+    let sourceCanvas = document.createElement("canvas")
+    let contextSource = sourceCanvas.getContext('2d')
+    sourceCanvas.width = this.image.width
+    sourceCanvas.height = this.image.height
+    contextSource.drawImage(this.image, 0, 0)
+
+    for (let i = 1; i <= n; i++){
+      let mipMap = document.createElement("canvas")
+      let mipMapContext = mipMap.getContext('2d')
+      let mipMapPixelBuffer = mipMapContext.getImageData(0, 0, this.image.width/currentDivision, this.image.height/currentDivision ).data
+
+      mipMap.width = this.image / currentDivision
+      mipMap.width = this.image / currentDivision
+
+      let pixelData = contextSource.getImageData(0, 0, this.iw, this.ih).data
+
+      // average each position of the given division
+      for(let offset = 0; offset < pixelData.length; offset+=4){
+        // get back the position of the x y coordinate from x + y*width
+        //
+        // pixelColor should do average of the N nearest positions
+        let pixelColor = new Vector3f(pixelData[offset], pixelData[offset+1], pixelData[offset+2])
+
+        for(let mipMapOffset = 0; mipMapOffset < mipMapPixelBuffer.length; mipMapOffset +=4 ){
+          // TODO: Vector 3 should return [x, y, z]
+          mipMapPixelBuffer[mipMapOffset] = pixelColor;
+        }
+
+      }
+
+      currentDivision *= i;
+    }
+  }
+
   const callback = () => {
 
     let iw, ih;
@@ -29,11 +69,12 @@ Texture.prototype.loadImage = function() {
     this.canvas.width = this.image.width;
     this.canvas.height = this.image.height;
 
+    buildMipMaps(4)
+
     let canvas2D = this.canvas.getContext('2d')
     canvas2D.drawImage(this.image, 0, 0, iw, ih)
 
     this.pixelData = canvas2D.getImageData(0, 0, iw, ih).data
-    console.log( 'image callback pixel data',this.pixelData)
     return this
   }
 
@@ -57,29 +98,7 @@ Texture.prototype.loadImage = function() {
 
 }
 
-Texture.prototype.getTexel = function(u, v) {
-  // bilinear filtering
-  // fx = frac(tx)
-  // fy = frac(ty)
-  // tx = floor(tx)
-  // ty = floor(ty)
-
-
-  // TL = texture[tx][ty]
-  // TR = texture[tx+1][ty]
-  // BL = texture[tx][ty+1]
-  // BR = texture[tx+1][ty+1]
-
-  // CT = fx * TR + (1 - fx) * TL
-  // CB = fx * BR + (1 - fx) * BL
-
-  // return fy * CB + (1 - fy) * CT
-
-  // var iu = (u*this.iw) | 0;
-  // var iv = (v*this.ih) | 0;
-
-  // var offset = (iv*this.iw*4 + iu*4);
-
+Texture.prototype.getTexel = function(u, v, z) {
 
   let tx = (u*this.iw);
   let ty = (v*this.ih);
